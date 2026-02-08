@@ -5,24 +5,25 @@
 <title>Hayatta Kal</title>
 <style>
 body{background:#111;color:#eee;font-family:Arial;text-align:center}
-button{margin:4px;padding:6px 12px;cursor:pointer}
-.panel{border:1px solid #444;padding:10px;margin:10px auto;max-width:650px;text-align:left}
+button{margin:4px;padding:6px 14px;cursor:pointer}
+.panel{border:1px solid #444;padding:12px;margin:10px auto;max-width:720px;text-align:left}
 #game,#end{display:none}
 .choice button{display:block;margin:6px 0}
+.story{font-style:italic;color:#ccc}
 </style>
 </head>
 <body>
 
 <div id="menu">
   <h1>🕯 Hayatta Kal</h1>
-  <p>Her gün bir bedel.</p>
+  <p>Buraya nasıl geldiğini hatırlamıyorsun.</p>
   <button onclick="baslat()">▶ Başla</button>
 </div>
 
 <div id="game">
   <div class="panel" id="stats"></div>
+  <div class="panel story" id="story"></div>
   <div class="panel" id="status"></div>
-  <div class="panel" id="story"></div>
   <div class="panel" id="log"></div>
   <div class="panel" id="choices"></div>
 
@@ -43,13 +44,13 @@ button{margin:4px;padding:6px 12px;cursor:pointer}
 <script>
 let gun,can,enerji,odak;
 let kesifSay=0,dinlenSay=0,toplamHasar=0;
-let seciliOlay=null;
+let kaliciTehdit=false, evcilHayvan=false;
 
 function baslat(){
   menu.style.display="none";
   game.style.display="block";
   gun=1;can=100;enerji=100;odak=5;
-  guncelle(); hikaye();
+  guncelle(); hikayeGuncelle();
 }
 
 function guncelle(){
@@ -61,62 +62,119 @@ function guncelle(){
   status.innerHTML="<b>Durum:</b> "+(d.length?d.join(", "):"Normal");
 }
 
-function hikaye(){
+function hikayeGuncelle(){
   let h="";
-  if(gun==1)h="Nerede olduğunu hatırlamıyorsun.";
-  if(gun==5)h="Geceler artık daha uzun.";
-  if(gun==10)h="Bu yer seni izliyor gibi.";
-  if(gun==15)h="Bazı izler sana ait değil.";
-  if(gun==20)h="Buradan sağ çıkmak mümkün mü?";
-  story.innerHTML=h?("<b>Hikâye:</b><br>"+h):"";
+  if(gun==1) h="Soğuk. Sessizlik. Neredeyim ben?";
+  if(gun==3) h="Bu orman… sanki nefes alıyor.";
+  if(gun==7) h="Geceleri bir şeylerin dolaştığını hissediyorsun.";
+  if(gun==12) h="Artık yalnız olmadığından eminsin.";
+  if(gun==18) h="Burada senden önce başkaları da vardı.";
+  if(gun==25) h="Buradan çıkış bir umut mu, yoksa yalan mı?";
+  story.innerHTML=h;
 }
 
 function logYaz(t){ log.innerHTML=t }
 
 function kesif(){
-  if(odak<=0){logYaz("Odak yok.");return;}
+  if(odak<=0){logYaz("Zihnin dağınık.");return;}
   kesifSay++; odak--; enerji-=10;
-  if(Math.random()<0.5){ olayBaslat(); }
-  else{ logYaz("Sessiz bir keşif."); }
+  if(Math.random()<0.6){ olayBaslat(); }
+  else logYaz("Keşif sessiz geçti.");
   sinirla(); guncelle();
 }
 
 function olayBaslat(){
-  seciliOlay="hayvan";
+  const olaylar=["hayvan","evcil","kamp","bitki"];
+  const o=olaylar[Math.floor(Math.random()*olaylar.length)];
+  if(o==="hayvan") hayvan();
+  if(o==="evcil") evcil();
+  if(o==="kamp") kamp();
+  if(o==="bitki") bitki();
+}
+
+function hayvan(){
   choices.innerHTML=`
-  <b>Olay:</b> Yaralı bir hayvanla karşılaştın.
+  <b>Olay:</b> Gözlerini karanlıkta parlayan bir hayvan görüyorsun.
   <div class="choice">
-    <button onclick="secim('yardim')">Yardım Et</button>
-    <button onclick="secim('kac')">Uzak Dur</button>
-    <button onclick="secim('av')">Avla</button>
+    <button onclick="hayvanSec('kac')">Kaç</button>
+    <button onclick="hayvanSec('savun')">Savun</button>
+    <button onclick="hayvanSec('kovala')">Kovala</button>
   </div>`;
 }
 
-function secim(s){
+function hayvanSec(s){
   choices.innerHTML="";
-  if(s=="yardim"){
-    can-=5; logYaz("Hayvan kaçtı ama içini kemiren bir his kaldı.");
+  if(s==="kac"){ enerji-=10; logYaz("Kalbin uzun süre durulmadı."); }
+  if(s==="savun"){ can-=12; toplamHasar+=12; kaliciTehdit=true;
+    logYaz("Yaralandın. Bir şey seni izliyor."); }
+  if(s==="kovala"){ can-=6; toplamHasar+=6;
+    logYaz("Hayvan kaçtı ama geri dönebilir."); }
+  sinirla(); guncelle();
+}
+
+function evcil(){
+  choices.innerHTML=`
+  <b>Olay:</b> Küçük bir hayvan sana yaklaşıyor.
+  <div class="choice">
+    <button onclick="evcilSec('besle')">Besle</button>
+    <button onclick="evcilSec('kov')">Uzaklaştır</button>
+  </div>`;
+}
+
+function evcilSec(s){
+  choices.innerHTML="";
+  if(s==="besle"){ evcilHayvan=true; enerji-=5;
+    logYaz("Artık geceler biraz daha sessiz."); }
+  if(s==="kov"){ logYaz("Yalnızlık geri döndü."); }
+  sinirla(); guncelle();
+}
+
+function kamp(){
+  choices.innerHTML=`
+  <b>Olay:</b> Terk edilmiş bir kamp.
+  <div class="choice">
+    <button onclick="kampSec('ara')">Ara</button>
+    <button onclick="kampSec('git')">Uzaklaş</button>
+  </div>`;
+}
+
+function kampSec(s){
+  choices.innerHTML="";
+  if(s==="ara"){ enerji+=10; logYaz("Biri burada yaşamış…"); }
+  if(s==="git"){ logYaz("Bazı sorular cevapsız kaldı."); }
+  sinirla(); guncelle();
+}
+
+function bitki(){
+  choices.innerHTML=`
+  <b>Olay:</b> Tanımadığın bir bitki.
+  <div class="choice">
+    <button onclick="bitkiSec('ye')">Tüket</button>
+    <button onclick="bitkiSec('dokunma')">Dokunma</button>
+  </div>`;
+}
+
+function bitkiSec(s){
+  choices.innerHTML="";
+  if(s==="ye"){
+    if(Math.random()<0.5){ can+=10; logYaz("Vücudun ısındı."); }
+    else{ can-=10; toplamHasar+=10; logYaz("Hata yaptın."); }
   }
-  if(s=="kac"){
-    logYaz("Hiçbir şey olmadı.");
-  }
-  if(s=="av"){
-    enerji+=10; can-=8; toplamHasar+=8;
-    logYaz("Hayatta kaldın ama bedeli oldu.");
-  }
+  if(s==="dokunma"){ logYaz("Bazen en iyi karar hiçbir şey yapmamaktır."); }
   sinirla(); guncelle();
 }
 
 function dinlen(){
   dinlenSay++; enerji+=20; can+=5;
-  logYaz("Dinlendin.");
+  logYaz("Gözlerini kapattın ama tam uyuyamadın.");
   sinirla(); guncelle();
 }
 
 function gunuBitir(){
   enerji-=gun<=5?5:gun<=15?8:10;
-  if(gun>10){can-=2; toplamHasar+=2;}
-  gun++; hikaye();
+  if(kaliciTehdit){ can-=1; toplamHasar+=1; }
+  if(evcilHayvan){ enerji+=2; }
+  gun++; hikayeGuncelle();
   sinirla(); guncelle();
 }
 
