@@ -4,22 +4,39 @@
 <meta charset="UTF-8">
 <title>Hayatta Kal</title>
 <style>
-body{background:#111;color:#eee;font-family:Arial;text-align:center}
-button{padding:6px 14px;margin:4px;cursor:pointer}
-.panel{border:1px solid #444;padding:12px;margin:10px auto;max-width:760px;text-align:left}
+body{background:#0f0f0f;color:#eee;font-family:Arial;text-align:center;margin:0}
+button{padding:8px 18px;margin:6px;cursor:pointer}
+.panel{border:1px solid #444;padding:14px;margin:12px auto;max-width:760px;text-align:left}
 .story{font-style:italic;color:#ccc;min-height:90px}
-#game,#end{display:none}
 .choice button{display:block;margin:6px 0}
+#game,#end,#how{display:none}
+h1,h2{font-weight:normal}
 </style>
 </head>
 <body>
 
+<!-- GİRİŞ -->
 <div id="menu">
-  <h1>🕯 Hayatta Kal</h1>
-  <p>Soğuk… ve hatırlamadığın bir yer.</p>
-  <button onclick="baslat()">▶ Başla</button>
+  <h1>🕯 HAYATTA KAL</h1>
+  <p>Soğuk. Sessizlik. Ve neden burada olduğunu bilmiyorsun.</p>
+  <button onclick="ekran('how')">Nasıl Oynanır</button>
+  <button onclick="baslat()">Oyuna Başla</button>
 </div>
 
+<!-- NASIL OYNANIR -->
+<div id="how" class="panel">
+  <h2>Nasıl Oynanır?</h2>
+  <p>
+  Bu bir karar oyunudur.<br><br>
+  • Her gün farklı eylemler seçersin<br>
+  • Her seçimin kısa ve uzun vadeli sonuçları vardır<br>
+  • Hikâye, oynayış tarzına göre değişir<br><br>
+  Yanlış karar yoktur. Bedeli olan kararlar vardır.
+  </p>
+  <button onclick="ekran('menu')">Geri</button>
+</div>
+
+<!-- OYUN -->
 <div id="game">
   <div class="panel" id="stats"></div>
   <div class="panel story" id="story"></div>
@@ -30,11 +47,14 @@ button{padding:6px 14px;margin:4px;cursor:pointer}
   <div class="panel">
     <button onclick="kesif()">Keşif</button>
     <button onclick="dinlen()">Dinlen</button>
+    <button onclick="gozlem()">👁 Gözlem</button>
+    <button onclick="antrenman()">🧠 Antrenman</button>
     <button onclick="gunuBitir()">Günü Bitir</button>
     <button onclick="hikayeIlerle()">İlerle ▶</button>
   </div>
 </div>
 
+<!-- SON -->
 <div id="end">
   <h2 id="endTitle"></h2>
   <div class="panel" id="summary"></div>
@@ -43,87 +63,52 @@ button{padding:6px 14px;margin:4px;cursor:pointer}
 
 <script>
 // =====================
+// EKRAN GEÇİŞ
+// =====================
+function ekran(id){
+  menu.style.display="none";
+  how.style.display="none";
+  game.style.display="none";
+  end.style.display="none";
+  document.getElementById(id).style.display="block";
+}
+
+// =====================
 // OYUN DEĞİŞKENLERİ
 // =====================
 let gun,can,enerji,odak;
 let kesifSay=0,dinlenSay=0,toplamHasar=0;
-let kaliciTehdit=false,evcilHayvan=false;
-
-let profil={
-  kesifci:0,
-  temkinli:0,
-  hayattaKalan:0
-};
+let bilgi=0,hazirlik=0;
+let kaliciTehdit=false;
 
 let aktifHikaye=[],hikayeIndex=0;
 
 // =====================
-// SABİT HİKÂYE GÜNLERİ
-// =====================
-const SABIT_HIKAYE={
-1:["Uyandığında buraya nasıl geldiğini bilmiyorsun."],
-4:["Orman seni izliyormuş gibi hissettiriyor."],
-8:["Burada senden önce başkaları vardı."],
-13:["Geri dönmek diye bir şey kalmadı."],
-18:["Burası artık seni tanıyor."],
-22:["Sonuna yaklaşıyorsun."]
-};
-
-// =====================
-// BAŞLAT
-// =====================
 function baslat(){
-  menu.style.display="none";
-  game.style.display="block";
+  ekran("game");
   gun=1;can=100;enerji=100;odak=5;
-  hikayeHazirla();
-  guncelle();
+  hikayeHazirla(); guncelle();
 }
 
-// =====================
-// EKRAN GÜNCELLEME
 // =====================
 function guncelle(){
   stats.innerHTML=`<b>Gün:</b> ${gun} | ❤️ ${can} ⚡ ${enerji} 🎯 ${odak}`;
   let d=[];
   if(can<40)d.push("Yaralı");
   if(enerji<30)d.push("Tükenmiş");
-  if(odak<=0)d.push("Zihni Dağınık");
   status.innerHTML="<b>Durum:</b> "+(d.length?d.join(", "):"Normal");
 }
 
 // =====================
-// OYUNCUYA ÖZEL HİKÂYE
-// =====================
-function profilMetni(){
-  if(profil.kesifci > profil.temkinli+2)
-    return "Durmak sana göre değil. Bilmediğin şeylere doğru yürüyorsun.";
-  if(profil.temkinli > profil.kesifci+2)
-    return "Beklemeyi öğrendin. Sabır seni hayatta tutuyor.";
-  return "Ne ileri ne geri. Sadece ayakta kalmaya çalışıyorsun.";
-}
-
-// =====================
-// HİKÂYE HAZIRLA
-// =====================
 function hikayeHazirla(){
   aktifHikaye=[];
-  aktifHikaye.push(profilMetni());
-
-  if(SABIT_HIKAYE[gun])
-    aktifHikaye.push(...SABIT_HIKAYE[gun]);
-
-  if(can<40)aktifHikaye.push("Vücudun senden önce pes ediyor.");
-  if(enerji<30)aktifHikaye.push("Her adım daha ağır.");
-  if(kaliciTehdit)aktifHikaye.push("Bir şey seni izliyor.");
-  if(evcilHayvan)aktifHikaye.push("Yanında yalnız değilsin.");
-
+  if(bilgi>2) aktifHikaye.push("Çevredeki detayları daha erken fark ediyorsun.");
+  if(hazirlik>2) aktifHikaye.push("Vücudun zorluklara daha hazır.");
+  if(kaliciTehdit) aktifHikaye.push("Bir şey seni izliyor.");
   hikayeIndex=0;
   story.innerHTML=aktifHikaye[0]||"";
 }
 
-// =====================
-// HİKÂYE İLERLE
 // =====================
 function hikayeIlerle(){
   if(hikayeIndex<aktifHikaye.length-1){
@@ -133,118 +118,72 @@ function hikayeIlerle(){
 }
 
 // =====================
-// KEŞİF
+// EYLEMLER
 // =====================
 function kesif(){
   if(odak<=0){log.innerHTML="Odak yok.";return;}
-  kesifSay++; profil.kesifci++;
-  odak--; enerji-=10;
-  Math.random()<0.6 ? olay() : log.innerHTML="Sessiz bir keşif.";
+  odak--; enerji-=10; kesifSay++;
+  Math.random()<(0.6-bilgi*0.1)?hayvanOlay():log.innerHTML="Sessiz bir keşif.";
   kontrol(); guncelle();
 }
 
-// =====================
-// OLAYLAR
-// =====================
-function olay(){
-  Math.random()<0.5 ? hayvanOlay() : evcilOlay();
-}
-
-function hayvanOlay(){
-  choices.innerHTML=`
-  <b>Bir hayvan aniden saldırıyor</b>
-  <button onclick="hayvanSec('kac')">Kaç</button>
-  <button onclick="hayvanSec('savun')">Savun</button>`;
-}
-
-function hayvanSec(secim){
-  choices.innerHTML="";
-  if(secim==="kac"){
-    enerji-=12;
-    log.innerHTML="Kaçmayı başardın ama yıprandın.";
-  }
-  if(secim==="savun"){
-    can-=15; toplamHasar+=15;
-    kaliciTehdit=true;
-    aktifHikaye.push("Bu orman şiddeti unutmuyor.");
-  }
-  kontrol(); guncelle();
-}
-
-function evcilOlay(){
-  evcilHayvan=true;
-  log.innerHTML="Yaralı bir hayvan sana yaklaşıyor. Artık yalnız değilsin.";
-}
-
-// =====================
-// DİNLEN
-// =====================
 function dinlen(){
-  dinlenSay++; profil.temkinli++;
-  enerji+=20; can+=6;
+  enerji+=20; can+=6; dinlenSay++;
   log.innerHTML="Dinlendin.";
   kontrol(); guncelle();
 }
 
-// =====================
-// GÜN BİTİR
-// =====================
-function gunuBitir(){
-  enerji-=8;
-  if(kaliciTehdit){can--;toplamHasar++;}
-  if(evcilHayvan)enerji+=2;
-  profil.hayattaKalan++;
-  gun++;
-  hikayeHazirla();
+function gozlem(){
+  if(odak<=0){log.innerHTML="Odak yok.";return;}
+  odak--; bilgi++;
+  log.innerHTML="Çevreyi dikkatle gözlemledin.";
+  aktifHikaye.push("Bazı şeyleri önceden fark ettin.");
+  guncelle();
+}
+
+function antrenman(){
+  enerji-=10; odak++; hazirlik++;
+  log.innerHTML="Kendini zorladın.";
+  aktifHikaye.push("Daha hazırlıklısın.");
   kontrol(); guncelle();
 }
 
 // =====================
-// SON KONTROL
+function hayvanOlay(){
+  choices.innerHTML=`
+  <b>Bir hayvan saldırıyor</b>
+  <button onclick="hayvanSec()">Savun</button>`;
+}
+
+function hayvanSec(){
+  choices.innerHTML="";
+  let hasar=Math.max(0,15-hazirlik*2);
+  can-=hasar; toplamHasar+=hasar;
+  if(hasar>0) kaliciTehdit=true;
+  log.innerHTML="Karşılaşma sona erdi.";
+  kontrol(); guncelle();
+}
+
+// =====================
+function gunuBitir(){
+  enerji-=8;
+  if(kaliciTehdit){can--;toplamHasar++;}
+  gun++; hikayeHazirla();
+  kontrol(); guncelle();
+}
+
 // =====================
 function kontrol(){
-  if(can<=0)bitir("Avlandın","Bu orman seni kabul etmedi.");
-  if(enerji<=0)bitir("Tükeniş","Ayağa kalkacak gücün kalmadı.");
-  if(gun>=25)sonBelirle();
+  if(can<=0) bitir("Avlandın","Bu yer seni kabul etmedi.");
+  if(enerji<=0) bitir("Tükeniş","Ayağa kalkacak gücün kalmadı.");
+  if(gun>=25) bitir("Hayatta Kalan","Bu yer seni değiştirdi.");
 }
 
 // =====================
-// SONLAR
-// =====================
-function sonBelirle(){
-  let baslik="Hayatta Kalan";
-  let metin="Yaşadın ama izleri seninle.";
-
-  if(evcilHayvan && !kaliciTehdit){
-    baslik="Uyum";
-    metin="Bu yerle bağ kurdun.";
-  }
-  if(profil.kesifci>profil.temkinli){
-    baslik="Kaşif";
-    metin="Risk aldın, bedelini ödedin.";
-  }
-  if(kaliciTehdit && toplamHasar>40){
-    baslik="Karanlık Son";
-    metin="Peşindeler. Kaçış yok.";
-  }
-
-  bitir(baslik,metin);
-}
-
-// =====================
-// OYUN BİTİR
-// =====================
-function bitir(baslik,metin){
-  game.style.display="none";
-  end.style.display="block";
-  endTitle.innerText=baslik;
-  summary.innerHTML=`
-  ${metin}<br><br>
-  Gün: ${gun}<br>
-  Keşif: ${kesifSay}<br>
-  Dinlenme: ${dinlenSay}<br>
-  Toplam Hasar: ${toplamHasar}
-  `;
+function bitir(b,m){
+  ekran("end");
+  endTitle.innerText=b;
+  summary.innerHTML=m;
 }
 </script>
 </body>
