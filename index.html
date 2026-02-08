@@ -2,105 +2,145 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Arda - Son Çocuk</title>
+  <title>Hatalı Karar</title>
+  <style>
+    body {
+      background: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    button {
+      margin: 4px 0;
+      padding: 8px;
+      width: 100%;
+      background: #222;
+      color: #eee;
+      border: 1px solid #555;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #333;
+    }
+  </style>
 </head>
-<body>
 
-<h1>🌑 Arda: Son Çocuk</h1>
+<body onload="basla()">
+
+<h1>🕹️ Hatalı Karar</h1>
 <div id="hikaye"></div>
 
 <script>
-let zaman = 0;
+let seviye = 1;
+let odak = 10;
 
 let yetenekler = {
-  guc: 1,
-  yakin: 0,
-  dayanik: 0,
-  agir: 0,
-
-  hiz: 1,
+  // Temel
+  guc: 0,
+  hiz: 0,
+  dayaniklilik: 0,
   ceviklik: 0,
-  kacinma: 0,
-  ilk: 0,
 
-  zeka: 1,
+  // Zihinsel
+  zeka: 0,
+  sezgi: 0,
   strateji: 0,
-  buyu: 0,
-  algi: 0,
+  odaklanma: 0,
 
+  // Doğa
   hayvan: 0,
-  evcil: 0,
-  savas: 0,
-  gizli: 0
+  dogaylaUyum: 0,
+  izSurme: 0,
+  sessizlik: 0,
+
+  // Gizli
+  karanlik: 0,
+  kadimBag: 0,
+  icgudu: 0,
+  hayattaKalma: 0
 };
 
 function basla() {
   document.getElementById("hikaye").innerHTML = `
-    <p>
-      Arda karanlık dünyada hayatta kalmaya çalışıyor.<br>
-      Güneş batmadan önce yeteneklerini geliştirmeli.
-    </p>
+    <h3>👦 Arda – Dünyadaki Son Çocuk</h3>
+    <p>Akşam olmadan önce yeteneklerini geliştirmelisin.</p>
 
-    <h3>💪 Güç</h3>
-    Güç: ${yetenekler.guc}/10
-    <button onclick="gelistir('guc')">+</button><br>
-    Yakın Dövüş: ${yetenekler.yakin}/10
-    <button onclick="gelistir('yakin')">+</button><br>
-    Dayanıklılık: ${yetenekler.dayanik}/10
-    <button onclick="gelistir('dayanik')">+</button><br>
-    Ağır Silah: ${yetenekler.agir}/10
-    <button onclick="gelistir('agir')">+</button>
+    <p>💠 <b>Odak Puanı:</b> ${odak}</p>
 
-    <h3>⚡ Hız</h3>
-    Hız: ${yetenekler.hiz}/10
-    <button onclick="gelistir('hiz')">+</button><br>
-    Çeviklik: ${yetenekler.ceviklik}/10
-    <button onclick="gelistir('ceviklik')">+</button><br>
-    Kaçınma: ${yetenekler.kacinma}/10
-    <button onclick="gelistir('kacinma')">+</button><br>
-    İlk Vuruş: ${yetenekler.ilk}/10
-    <button onclick="gelistir('ilk')">+</button>
+    <h4>⚔️ Temel Yetenekler</h4>
+    ${buton("💪 Güç", "guc")}
+    ${buton("⚡ Hız", "hiz")}
+    ${buton("🛡️ Dayanıklılık", "dayaniklilik")}
+    ${buton("🤸 Çeviklik", "ceviklik")}
 
-    <h3>🧠 Zeka</h3>
-    Zeka: ${yetenekler.zeka}/10
-    <button onclick="gelistir('zeka')">+</button><br>
-    Strateji: ${yetenekler.strateji}/10
-    <button onclick="gelistir('strateji')">+</button><br>
-    Büyü Kontrolü: ${yetenekler.buyu}/10
-    <button onclick="gelistir('buyu')">+</button><br>
-    Algı: ${yetenekler.algi}/10
-    <button onclick="gelistir('algi')">+</button>
+    <h4>🧠 Zihinsel Yetenekler</h4>
+    ${buton("🧠 Zeka", "zeka")}
+    ${buton("🔮 Sezgi", "sezgi")}
+    ${buton("♟️ Strateji", "strateji")}
+    ${buton("🎯 Odaklanma", "odaklanma")}
 
-    <h3>🐺 Hayvan Bağlantısı</h3>
-    Hayvan Bağlantısı: ${yetenekler.hayvan}/10
-    <button onclick="gelistir('hayvan')">+</button><br>
-    Evcilleştirme: ${yetenekler.evcil}/10
-    <button onclick="gelistir('evcil')">+</button><br>
-    Hayvan Savaşı: ${yetenekler.savas}/10
-    <button onclick="gelistir('savas')">+</button><br>
-    Gizli Bağ: ${yetenekler.gizli}/10
-    <button onclick="gelistir('gizli')">+</button>
+    <h4>🌿 Doğa Yetenekleri</h4>
+    ${buton("🐺 Hayvan Evcilleştirme", "hayvan")}
+    ${buton("🍃 Doğayla Uyum", "dogaylaUyum")}
+    ${buton("👣 İz Sürme", "izSurme")}
+    ${buton("🤫 Sessizlik", "sessizlik")}
+
+    <h4>🌑 Gizli Yetenekler</h4>
+    ${buton("🌑 Karanlık Güç", "karanlik")}
+    ${buton("🗝️ Kadim Bağ", "kadimBag")}
+    ${buton("🔥 İçgüdü", "icgudu")}
+    ${buton("🏕️ Hayatta Kalma", "hayattaKalma")}
   `;
 }
 
-function gelistir(y) {
-  if (yetenekler[y] < 10) {
-    yetenekler[y]++;
-    zaman++;
+function buton(ad, tur) {
+  return `<button onclick="gelistir('${tur}')">
+    ${ad} (${yetenekler[tur]}/10) – 1 Odak
+  </button>`;
+}
+
+function gelistir(tur) {
+  if (odak <= 0) {
+    alert("❌ Odak puanın bitti!");
+    return;
   }
 
-  if (zaman >= 8) {
-    document.getElementById("hikaye").innerHTML = `
-      <h2>🌒 AKŞAM OLDU</h2>
-      <p>Canavarlar dalga dalga geliyor...</p>
-      <p>Seçimlerinin sonucuyle yüzleşeceksin.</p>
-    `;
+  if (yetenekler[tur] >= 10) {
+    alert("⚠️ Bu yetenek zaten maksimum!");
+    return;
+  }
+
+  yetenekler[tur]++;
+  odak--;
+  seviye++;
+
+  if (seviye >= 8) {
+    aksam();
   } else {
     basla();
   }
 }
 
-basla();
+function aksam() {
+  let toplam =
+    yetenekler.guc +
+    yetenekler.hiz +
+    yetenekler.dayaniklilik +
+    yetenekler.ceviklik +
+    yetenekler.hayattaKalma +
+    yetenekler.hayvan;
+
+  let sonuc = toplam >= 12
+    ? "🏆 Arda canavarları alt etti ve hayatta kaldı!"
+    : "☠️ Arda yeterince güçlü değildi… Oyun bitti.";
+
+  document.getElementById("hikaye").innerHTML = `
+    <h2>🌑 AKŞAM OLDU</h2>
+    <p>${sonuc}</p>
+    <p>🔢 Toplam Kritik Güç: ${toplam}</p>
+    <button onclick="location.reload()">🔁 Yeniden Başla</button>
+  `;
+}
 </script>
 
 </body>
