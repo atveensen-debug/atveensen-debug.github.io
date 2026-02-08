@@ -5,32 +5,26 @@
 <title>Arda – Son Çocuk</title>
 
 <style>
-body {
+body{
   background:#111;
   color:#eee;
   font-family:Arial;
   margin:0;
   text-align:center;
 }
-button {
+button{
   margin:4px;
   padding:6px 12px;
   cursor:pointer;
 }
-.screen {
-  display:none;
-  padding:20px;
-}
-#menu {
-  display:block;
-  min-height:100vh;
-}
-.box {
+.screen{display:none;padding:20px}
+#menu{display:block;min-height:100vh}
+.box{
   border:1px solid #444;
   padding:10px;
   margin-bottom:10px;
 }
-h2 { margin-top:16px }
+h2{margin-top:16px}
 </style>
 </head>
 
@@ -57,9 +51,32 @@ h2 { margin-top:16px }
 
 <!-- AYARLAR -->
 <div id="settings" class="screen">
-  <h2>Ayarlar</h2>
-  <p>(Bir sonraki adımda dolduracağız)</p>
-  <button onclick="anaMenu()">⬅ Geri</button>
+  <h2>⚙ Ayarlar</h2>
+
+  <div class="box">
+    <h3>Zorluk</h3>
+    <button onclick="ayarZorluk('kolay')">Kolay</button>
+    <button onclick="ayarZorluk('normal')">Normal</button>
+    <button onclick="ayarZorluk('zor')">Zor</button>
+    <p>Seçili: <b id="zorlukYazi">Normal</b></p>
+  </div>
+
+  <div class="box">
+    <h3>Yazı Hızı</h3>
+    <button onclick="ayarYazi('anlik')">Anlık</button>
+    <button onclick="ayarYazi('normal')">Normal</button>
+    <button onclick="ayarYazi('yavas')">Yavaş</button>
+    <p>Seçili: <b id="yaziYazi">Normal</b></p>
+  </div>
+
+  <div class="box">
+    <h3>İpuçları</h3>
+    <button onclick="ayarIpucu(true)">Açık</button>
+    <button onclick="ayarIpucu(false)">Kapalı</button>
+    <p>Durum: <b id="ipucuYazi">Açık</b></p>
+  </div>
+
+  <button onclick="anaMenu()">⬅ Ana Menü</button>
 </div>
 
 <!-- OYUN -->
@@ -73,7 +90,7 @@ h2 { margin-top:16px }
   <div>❤️ Can: <span id="can"></span></div>
   <div>⚡ Enerji: <span id="enerji"></span></div>
   <div>💠 Odak: <span id="odak"></span></div>
-  <div>⏳ Kalan hamle: <span id="zaman"></span></div>
+  <div>⏳ Hamle: <span id="zaman"></span></div>
 </div>
 
 <div id="yetenekler"></div>
@@ -83,64 +100,67 @@ h2 { margin-top:16px }
 
 <hr>
 <div id="log"></div>
-
 </div>
 
 <script>
-/* ---------- EKRAN YÖNETİMİ ---------- */
-function gizleHepsi() {
-  ["menu","howto","settings","game"].forEach(id=>{
-    document.getElementById(id).style.display="none"
-  })
-}
-function anaMenu() {
-  gizleHepsi()
-  document.getElementById("menu").style.display="block"
-}
-function nasilOynanir() {
-  gizleHepsi()
-  document.getElementById("howto").style.display="block"
-}
-function ayarlar() {
-  gizleHepsi()
-  document.getElementById("settings").style.display="block"
-}
-function oyunaBasla() {
-  gizleHepsi()
-  document.getElementById("game").style.display="block"
-  basla()
+/* -------- AYARLAR -------- */
+let ayarlarData={
+  zorluk:"normal",
+  yaziHizi:"normal",
+  ipucu:true
 }
 
-/* ---------- OYUN MEKANİKLERİ ---------- */
-let maxCan=10, maxEnerji=6
-let can, enerji, odak, zaman, gun
-let aktifTehdit=""
+/* -------- EKRAN -------- */
+function gizle(){
+  ["menu","howto","settings","game"].forEach(i=>{
+    document.getElementById(i).style.display="none"
+  })
+}
+function anaMenu(){gizle();menu.style.display="block"}
+function nasilOynanir(){gizle();howto.style.display="block"}
+function ayarlar(){gizle();settings.style.display="block"}
+function oyunaBasla(){gizle();game.style.display="block";basla()}
+
+/* -------- AYAR FONKS -------- */
+function ayarZorluk(z){
+  ayarlarData.zorluk=z
+  zorlukYazi.innerText=z
+}
+function ayarYazi(y){
+  ayarlarData.yaziHizi=y
+  yaziYazi.innerText=y
+}
+function ayarIpucu(d){
+  ayarlarData.ipucu=d
+  ipucuYazi.innerText=d?"Açık":"Kapalı"
+}
+
+/* -------- OYUN -------- */
+let maxCan=10,maxEnerji=6
+let can,enerji,odak,zaman,gun,aktifTehdit
 let kategoriler={
   Fiziksel:["Güç","Hız","Dayanıklılık","Çeviklik"],
   Hayatta:["Avcılık","İz sürme","Barınak","İlk yardım"],
   Karanlık:["Gölge","Korku direnci","Algı bozma","Sessizlik"],
-  Bag:["Hayvan","Sezgi","Doğa uyumu","Gizli bağ"]
+  Bağ:["Hayvan","Sezgi","Doğa uyumu","Gizli bağ"]
 }
 let yetenekler={}
 
 function basla(){
-  can=10; enerji=6; odak=10; zaman=6; gun=1
-  yetenekler={}
-  for(let k in kategoriler){
+  can=10;enerji=6;odak=10;gun=1
+  for(let k in kategoriler)
     kategoriler[k].forEach(y=>yetenekler[y]=0)
-  }
   yeniGun()
 }
 
 function yeniGun(){
   zaman=6
-  aktifTehdit=rastgeleKategori()
-  yaz(`🌅 Gün ${gun} başladı. Gece ${aktifTehdit} tehdidi var.`)
-  guncelle()
-  butonlar()
+  aktifTehdit=rastgele()
+  yaz(`🌅 Gün ${gun} başladı. Gece: ${aktifTehdit}`)
+  guncelle();butonlar()
 }
 
-function rastgeleKategori(){
+function rastgele(){
   let k=Object.keys(kategoriler)
   return k[Math.floor(Math.random()*k.length)]
 }
@@ -153,10 +173,10 @@ function guncelle(){
   gunEl("zaman",zaman)
   gunEl("tehdit",aktifTehdit)
 }
-function gunEl(id,v){document.getElementById(id).innerText=v}
+function gunEl(i,v){document.getElementById(i).innerText=v}
 
 function butonlar(){
-  let a=document.getElementById("yetenekler")
+  let a=yeteneklerDiv=document.getElementById("yetenekler")
   a.innerHTML=""
   for(let k in kategoriler){
     a.innerHTML+=`<h2>${k}</h2>`
@@ -169,9 +189,7 @@ function butonlar(){
 function gelistir(y){
   if(enerji<2||odak<=0){yaz("Yorgunsun.");return}
   yetenekler[y]++
-  enerji-=2
-  odak--
-  zaman--
+  enerji-=2;odak--;zaman--
   yaz(y+" geliştirildi.")
   kontrol()
 }
@@ -185,24 +203,22 @@ function dinlen(){
 }
 
 function kontrol(){
-  guncelle()
-  butonlar()
-  if(zaman<=0) gece()
-  if(can<=0){
-    yaz(`☠️ Arda ${gun}. gün hayatta kalamadı.`)
-  }
+  guncelle();butonlar()
+  if(zaman<=0)gece()
 }
 
 function gece(){
   let toplam=0
   kategoriler[aktifTehdit].forEach(y=>toplam+=yetenekler[y])
-  let gereken=6+gun
-  let eksik=Math.max(0,gereken-toplam)
+  let temel=6+gun
+  if(ayarlarData.zorluk=="kolay")temel-=2
+  if(ayarlarData.zorluk=="zor")temel+=2
+  let eksik=Math.max(0,temel-toplam)
   can-=eksik
   enerji=Math.max(0,enerji-1)
-  yaz(`🌑 Gece: ${aktifTehdit} | Can -${eksik}`)
-  gun++
-  yeniGun()
+  if(ayarlarData.ipucu&&eksik>0) yaz("İpucu: Bu kategoriye odaklan.")
+  yaz(`🌑 Gece bitti | Can -${eksik}`)
+  gun++;yeniGun()
 }
 
 function yaz(m){
