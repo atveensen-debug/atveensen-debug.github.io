@@ -96,12 +96,12 @@ function butonlar() {
 }
 
 function gelistir(y) {
-  if (enerji <= 0 || odak <= 0) {
+  if (enerji < 2 || odak <= 0) {
     yaz("Yorgunsun ya da odak yok.")
     return
   }
   yetenekler[y]++
-  enerji--
+  enerji -= 2   // 🔥 BURASI DEĞİŞTİ
   odak--
   zaman--
   yaz(y + " geliştirildi.")
