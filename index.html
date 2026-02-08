@@ -3,9 +3,97 @@
 <head>
   <meta charset="UTF-8">
   <title>Hatalı Karar</title>
+
+  <style>
+    body {
+      background-color: #111;
+      color: #eee;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    button {
+      background: #2ecc71;
+      border: none;
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-right: 6px;
+    }
+
+    button:hover {
+      background: #27ae60;
+    }
+
+    #hikaye {
+      margin-top: 20px;
+      line-height: 1.6;
+    }
+  </style>
 </head>
-<body>
-  <h1>Oyun başladı 🎮</h1>
-  <p>Bu bir metin tabanlı hikâye oyunu.</p>
+
+<body onload="basla()">
+
+  <h1>🕹️ Hatalı Karar</h1>
+  <div id="hikaye"></div>
+
+  <script>
+    let seviye = 1;
+    let guc = 1;
+
+    function basla() {
+      document.getElementById("hikaye").innerHTML = `
+        <p>
+          Arda dünyada hayatta kalan son çocuktu.<br>
+          Güneş batmadan önce güçlenmesi gerekiyordu.
+        </p>
+
+        <button onclick="antrenman()">Antrenman Yap</button>
+        <button onclick="dinlen()">Dinlen</button>
+      `;
+    }
+
+    function antrenman() {
+      guc++;
+      document.getElementById("hikaye").innerHTML = `
+        <p>Antrenman yaptın 💪 Gücün arttı.</p>
+        <p>Seviye: ${seviye} | Güç: ${guc}</p>
+
+        <button onclick="devam()">Devam Et</button>
+      `;
+    }
+
+    function dinlen() {
+      seviye++;
+      document.getElementById("hikaye").innerHTML = `
+        <p>Dinlendin ama zaman kaybettin ⏳</p>
+        <p>Seviye: ${seviye} | Güç: ${guc}</p>
+
+        <button onclick="devam()">Devam Et</button>
+      `;
+    }
+
+    function devam() {
+      seviye++;
+
+      if (seviye >= 3) {
+        document.getElementById("hikaye").innerHTML = `
+          <h2>🌑 GECE ÇÖKTÜ</h2>
+          <p>Yaratıklar ortaya çıktı...</p>
+          <p>Son Güç: ${guc}</p>
+        `;
+      } else {
+        document.getElementById("hikaye").innerHTML = `
+          <p>Güneş hâlâ batmadı.</p>
+          <p>Seviye: ${seviye} | Güç: ${guc}</p>
+
+          <button onclick="antrenman()">Antrenman Yap</button>
+          <button onclick="dinlen()">Dinlen</button>
+        `;
+      }
+    }
+  </script>
+
 </body>
 </html>
