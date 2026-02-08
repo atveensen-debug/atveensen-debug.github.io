@@ -1,195 +1,165 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>ARDA – Son Çocuk</title>
-<style>
-body {
-  background:#0f0f0f;
-  color:#eee;
-  font-family: Arial;
-  padding:15px;
-}
-h2,h3 { margin-top:10px; }
-button {
-  width:100%;
-  padding:8px;
-  margin:4px 0;
-}
-.box {
-  border:1px solid #444;
-  padding:10px;
-  margin-bottom:10px;
-}
-.log {
-  background:#000;
-  height:180px;
-  overflow-y:auto;
-  padding:8px;
-  font-size:14px;
-}
-.skill {
-  display:flex;
-  justify-content:space-between;
-  margin:3px 0;
-}
-</style>
+  <meta charset="UTF-8">
+  <title>Survival Taslak</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      padding: 20px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      cursor: pointer;
+    }
+    .panel {
+      border: 1px solid #444;
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+    .warn {
+      color: #ff6666;
+    }
+  </style>
 </head>
+<body onload="basla()">
 
-<body>
+<h1>🕯 Hayatta Kal</h1>
 
-<h2>🌑 Gün <span id="day">1</span></h2>
+<div class="panel" id="stats"></div>
+<div class="panel" id="status"></div>
+<div class="panel" id="log"></div>
 
-<div class="box">
-❤️ Can: <span id="health">100</span><br>
-⚡ Enerji: <span id="energy">100</span><br>
-🎯 Odak: <span id="focus">3</span><br>
-💰 Para: <span id="gold">50</span>
+<div class="panel">
+  <button onclick="kesif()">Keşif Yap</button>
+  <button onclick="dinlen()">Dinlen</button>
+  <button onclick="gunuBitir()">Günü Bitir</button>
 </div>
-
-<div class="box">
-<h3>🧭 Günlük Seçimler</h3>
-<button onclick="explore()">Keşfe Çık</button>
-<button onclick="rest()">Dinlen</button>
-<button onclick="endDay()">Günü Bitir</button>
-</div>
-
-<div class="box">
-<h3>🧠 Yetenekler</h3>
-<div id="skills"></div>
-</div>
-
-<div class="box log" id="log"></div>
 
 <script>
-let day = 1;
-let health = 100;
-let energy = 100;
-let focus = 3;
-let gold = 50;
+let gun, can, enerji, odak, kesifYapildi;
+let kaliciYorgunluk = false;
 
-let exploredToday = false;
-let animalPenaltyTomorrow = false;
-
-const skills = {
-  "Fiziksel": ["Güç", "Dayanıklılık", "Hız", "Çeviklik"],
-  "Savaş": ["Yakın Dövüş", "Savunma", "Refleks", "Silah"],
-  "Hayatta Kalma": ["Açlık", "Soğuk", "Zehir", "Uyum"],
-  "Doğa": ["İz Sürme", "Toplama", "Hayvan Bağı", "Keşif"]
-};
-
-let skillLevels = {};
-Object.values(skills).flat().forEach(s => skillLevels[s] = 1);
-
-function log(t){
-  const l = document.getElementById("log");
-  l.innerHTML += t + "<br>";
-  l.scrollTop = l.scrollHeight;
+function basla() {
+  gun = 1;
+  can = 100;
+  enerji = 100;
+  odak = 5;
+  kesifYapildi = false;
+  logYaz("Oyun başladı.");
+  guncelle();
 }
 
-function updateUI(){
-  dayEl().innerText = day;
-  document.getElementById("health").innerText = health;
-  document.getElementById("energy").innerText = energy;
-  document.getElementById("focus").innerText = focus;
-  document.getElementById("gold").innerText = gold;
+function guncelle() {
+  document.getElementById("stats").innerHTML = `
+    <b>Gün:</b> ${gun}<br>
+    ❤️ Can: ${can}<br>
+    ⚡ Enerji: ${enerji}<br>
+    🎯 Odak: ${odak}
+  `;
+
+  let durumlar = [];
+  if (can < 40) durumlar.push("❤️ Yaralı");
+  if (enerji < 30) durumlar.push("⚡ Tükenmiş");
+  if (odak <= 0) durumlar.push("🎯 Zihni Dağınık");
+
+  document.getElementById("status").innerHTML =
+    "<b>Durumlar:</b> " + (durumlar.length ? durumlar.join(", ") : "Normal");
 }
 
-function dayEl(){ return document.getElementById("day"); }
-
-function renderSkills(){
-  const box = document.getElementById("skills");
-  box.innerHTML = "";
-  for (let cat in skills){
-    box.innerHTML += `<strong>${cat}</strong><br>`;
-    skills[cat].forEach(s=>{
-      box.innerHTML += `
-      <div class="skill">
-        ${s} (Lv ${skillLevels[s]})
-        <button onclick="upgradeSkill('${s}')">+</button>
-      </div>`;
-    });
-  }
+function logYaz(metin) {
+  document.getElementById("log").innerHTML = metin;
 }
 
-function upgradeSkill(s){
-  if (gold < 10 || focus < 1) {
-    log("❌ Yetersiz para veya odak.");
+function kesif() {
+  if (odak <= 0) {
+    logYaz("Zihnin dağınık, keşif yapamazsın.");
     return;
   }
-  if (skillLevels[s] >= 10) {
-    log("⚠️ Bu yetenek zaten maksimum.");
-    return;
+
+  kesifYapildi = true;
+  odak--;
+  enerji -= 10;
+
+  let risk = gun >= 16 ? 0.7 : gun >= 6 ? 0.5 : 0.3;
+
+  if (Math.random() < risk) {
+    can -= 10;
+    logYaz("Keşifte tehlikeli bir olay yaşadın. Can kaybettin.");
+  } else {
+    logYaz("Keşif başarılı geçti.");
   }
-  gold -= 10;
-  focus -= 1;
-  skillLevels[s]++;
-  log(`⬆️ ${s} geliştirildi (Lv ${skillLevels[s]})`);
-  updateUI();
-  renderSkills();
+
+  sinirla();
+  guncelle();
 }
 
-function explore(){
-  if (exploredToday){
-    log("❌ Bugün zaten keşif yaptın.");
-    return;
-  }
-  if (energy < 10){
-    log("❌ Çok yorgunsun.");
-    return;
-  }
-  exploredToday = true;
-  energy -= 10;
-
-  let roll = Math.random();
-
-  if (roll < 0.35){
-    let dmg = 10 + Math.floor(Math.random()*10);
-    health -= dmg;
-    animalPenaltyTomorrow = true;
-    log(`🐗 Hayvan saldırısı! -${dmg} can`);
-    log("⚠️ Etkisi yarın da sürecek.");
-  }
-  else if (roll < 0.7){
-    focus++;
-    gold += 10;
-    log("🌿 Faydalı bir şey buldun. +1 odak, +10 para");
-  }
-  else {
-    log("🌫️ Keşif sakin geçti.");
-  }
-
-  updateUI();
+function dinlen() {
+  let enerjiKazanci = kaliciYorgunluk ? 10 : 20;
+  enerji += enerjiKazanci;
+  can += 5;
+  logYaz("Dinlendin ama zaman geçti.");
+  sinirla();
+  guncelle();
 }
 
-function rest(){
-  energy += 20;
-  if (energy > 100) energy = 100;
-  log("😴 Dinlendin.");
-  updateUI();
+function gunuBitir() {
+  geceEtkileri();
+  gun++;
+  kesifYapildi = false;
+  guncelle();
 }
 
-function endDay(){
-  log("🌙 Gece oldu...");
-  energy -= 15;
+function geceEtkileri() {
+  let mesaj = "";
 
-  if (animalPenaltyTomorrow){
-    energy -= 10;
-    log("🐾 Hayvan saldırısının etkisi devam ediyor.");
-    animalPenaltyTomorrow = false;
+  // Gün fazına göre temel cezalar
+  if (gun <= 5) {
+    enerji -= 5;
+    mesaj = "Gece sakin geçti.";
+  } else if (gun <= 15) {
+    enerji -= 8;
+    odak -= 1;
+    mesaj = "Uykun huzursuzdu.";
+  } else {
+    enerji -= 10;
+    odak -= 2;
+    can -= 2;
+    mesaj = "Gece neredeyse hiç uyuyamadın.";
   }
 
-  if (energy < 0) energy = 0;
+  // Durum bazlı ek cezalar
+  if (enerji < 30) {
+    can -= gun >= 6 ? 2 : 1;
+  }
 
-  exploredToday = false;
-  day++;
-  log("☀️ Yeni gün başladı.");
-  updateUI();
+  if (can < 40 && gun >= 6) {
+    enerji -= 5;
+    if (gun >= 16) {
+      kaliciYorgunluk = true;
+    }
+  }
+
+  if (odak <= 0 && gun >= 16) {
+    mesaj += " Zihnin tamamen çökmüş durumda.";
+  }
+
+  if (kesifYapildi && gun >= 16) {
+    can -= 1;
+  }
+
+  sinirla();
+  logYaz(mesaj);
 }
 
-renderSkills();
-updateUI();
-log("🎮 Arda dünyada tek başına kaldı...");
+function sinirla() {
+  can = Math.max(0, Math.min(100, can));
+  enerji = Math.max(0, Math.min(100, enerji));
+  odak = Math.max(0, odak);
+}
 </script>
 
 </body>
