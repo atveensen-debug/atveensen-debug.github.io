@@ -1,140 +1,139 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <title>Arda – Son Çocuk</title>
-  <style>
-    body { font-family: Arial; background:#111; color:#eee; padding:20px }
-    button { margin:4px; padding:6px 10px }
-    .bar { margin:6px 0 }
-  </style>
+<meta charset="UTF-8">
+<title>Arda – Son Çocuk</title>
+<style>
+body { background:#111; color:#eee; font-family:Arial; padding:20px }
+button { margin:3px; padding:5px }
+h2 { margin-top:20px }
+</style>
 </head>
 
 <body onload="basla()">
 
-<h1>🕹️ Arda – Son Çocuk</h1>
+<h1>🕯️ Arda – Son Çocuk</h1>
 
-<div class="bar">❤️ Can: <span id="can"></span></div>
-<div class="bar">⚡ Enerji: <span id="enerji"></span></div>
-<div class="bar">💠 Odak: <span id="odak"></span></div>
-<div class="bar">🌒 Akşama kalan hamle: <span id="zaman"></span></div>
+<div>📅 Gün: <span id="gun"></span></div>
+<div>❤️ Can: <span id="can"></span></div>
+<div>⚡ Enerji: <span id="enerji"></span></div>
+<div>💠 Odak: <span id="odak"></span></div>
+<div>🌒 Akşama kalan hamle: <span id="zaman"></span></div>
 
 <hr>
 
-<h3>Yetenekler</h3>
 <div id="yetenekler"></div>
 
 <button onclick="dinlen()">💤 Dinlen</button>
 
 <hr>
-<div id="hikaye"></div>
+<div id="log"></div>
 
 <script>
 let maxCan = 10
 let maxEnerji = 6
 
-let can, enerji, odak, zaman
+let can, enerji, odak, zaman, gun
 
-let yetenekler = {
-  guc: 0,
-  hiz: 0,
-  dayaniklilik: 0,
-  ceviklik: 0,
-  hayattaKalma: 0,
-  hayvan: 0,
-  karanlik: 0,
-  algi: 0
+let kategoriler = {
+  Fiziksel: ["Güç","Hız","Dayanıklılık","Çeviklik"],
+  Hayatta: ["Avcılık","İz sürme","Barınak","İlk yardım"],
+  Karanlık: ["Gölge","Korku direnci","Algı bozma","Sessizlik"],
+  Bag: ["Hayvan","Sezgi","Doğa uyumu","Gizli bağ"]
 }
+
+let yetenekler = {}
 
 function basla() {
   can = 10
   enerji = 6
   odak = 10
   zaman = 6
+  gun = 1
+
+  for (let k in kategoriler) {
+    kategoriler[k].forEach(y => yetenekler[y] = 0)
+  }
+
   guncelle()
-  yetenekButonlari()
-  yaz("Dünya yok oldu. Arda hayatta kalmak zorunda.")
+  butonlar()
+  yaz("Dünya karanlık. Arda hayatta kalmaya çalışıyor.")
 }
 
 function guncelle() {
-  document.getElementById("can").innerText = can + "/" + maxCan
-  document.getElementById("enerji").innerText = enerji + "/" + maxEnerji
+  can = Math.max(0, can)
+  enerji = Math.max(0, enerji)
+  document.getElementById("can").innerText = can+"/"+maxCan
+  document.getElementById("enerji").innerText = enerji+"/"+maxEnerji
   document.getElementById("odak").innerText = odak
   document.getElementById("zaman").innerText = zaman
+  document.getElementById("gun").innerText = gun
 }
 
-function yetenekButonlari() {
+function butonlar() {
   let alan = document.getElementById("yetenekler")
   alan.innerHTML = ""
-  for (let y in yetenekler) {
-    alan.innerHTML += `
-      <button onclick="gelistir('${y}')">
-        ${y} (${yetenekler[y]})
-      </button>
-    `
+
+  for (let k in kategoriler) {
+    alan.innerHTML += `<h2>${k}</h2>`
+    kategoriler[k].forEach(y => {
+      alan.innerHTML += `<button onclick="gelistir('${y}')">${y} (${yetenekler[y]})</button>`
+    })
   }
 }
 
 function gelistir(y) {
-  if (odak <= 0 || enerji <= 0) {
-    yaz("Yeterli odak veya enerji yok.")
+  if (enerji <= 0 || odak <= 0) {
+    yaz("Yorgunsun ya da odak yok.")
     return
   }
-
   yetenekler[y]++
-  odak--
   enerji--
+  odak--
   zaman--
-
-  yaz(`${y} geliştirildi.`)
+  yaz(y+" geliştirildi.")
   kontrol()
 }
 
 function dinlen() {
-  enerji = Math.min(maxEnerji, enerji + 3)
-  can = Math.min(maxCan, can + 1)
+  enerji = Math.min(maxEnerji, enerji+3)
+  can = Math.min(maxCan, can+1)
   zaman--
-
-  yaz("Dinlendin. Biraz toparlandın.")
+  yaz("Dinlendin.")
   kontrol()
 }
 
 function kontrol() {
   guncelle()
-  yetenekButonlari()
-
+  butonlar()
+  if (zaman <= 0) gece()
   if (can <= 0) {
-    yaz("☠️ Arda hayatını kaybetti. Oyun bitti.")
-    oyunBitti()
-    return
-  }
-
-  if (zaman <= 0) {
-    aksam()
+    yaz("☠️ Arda gün "+gun+"de hayatını kaybetti.")
+    document.querySelectorAll("button").forEach(b=>b.disabled=true)
   }
 }
 
-function aksam() {
-  let toplam =
-    yetenekler.guc +
-    yetenekler.dayaniklilik +
-    yetenekler.hayattaKalma +
-    yetenekler.hiz
+function gece() {
+  let kategori = "Fiziksel"
+  let toplam = 0
+  kategoriler[kategori].forEach(y => toplam += yetenekler[y])
 
-  if (toplam >= 8) {
-    yaz("🌅 Akşamı atlattın. Şimdilik hayattasın.")
-  } else {
-    yaz("☠️ Canavarlar geldi. Arda dayanamadı.")
-    oyunBitti()
-  }
+  let gereken = 6 + gun
+  let eksik = Math.max(0, gereken - toplam)
+
+  can -= eksik
+  enerji -= 1
+
+  yaz(`🌑 ${gun}. gece: ${kategori} tehdidi.
+Gereken ${gereken}, sende ${toplam}. Can -${eksik}, Enerji -1.`)
+
+  gun++
+  zaman = 6
+  guncelle()
 }
 
-function oyunBitti() {
-  document.querySelectorAll("button").forEach(b => b.disabled = true)
-}
-
-function yaz(metin) {
-  document.getElementById("hikaye").innerHTML = `<p>${metin}</p>`
+function yaz(m) {
+  document.getElementById("log").innerHTML = "<p>"+m+"</p>"
 }
 </script>
 
