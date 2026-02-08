@@ -2,98 +2,106 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Hatalı Karar</title>
-
-  <style>
-    body {
-      background-color: #111;
-      color: #eee;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-
-    button {
-      background: #2ecc71;
-      border: none;
-      padding: 10px 16px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 10px;
-      margin-right: 6px;
-    }
-
-    button:hover {
-      background: #27ae60;
-    }
-
-    #hikaye {
-      margin-top: 20px;
-      line-height: 1.6;
-    }
-  </style>
+  <title>Arda - Son Çocuk</title>
 </head>
+<body>
 
-<body onload="basla()">
+<h1>🌑 Arda: Son Çocuk</h1>
+<div id="hikaye"></div>
 
-  <h1>🕹️ Hatalı Karar</h1>
-  <div id="hikaye"></div>
+<script>
+let zaman = 0;
 
-  <script>
-    let seviye = 1;
-    let guc = 1;
+let yetenekler = {
+  guc: 1,
+  yakin: 0,
+  dayanik: 0,
+  agir: 0,
 
-    function basla() {
-      document.getElementById("hikaye").innerHTML = `
-        <p>
-          Arda dünyada hayatta kalan son çocuktu.<br>
-          Güneş batmadan önce güçlenmesi gerekiyordu.
-        </p>
+  hiz: 1,
+  ceviklik: 0,
+  kacinma: 0,
+  ilk: 0,
 
-        <button onclick="antrenman()">Antrenman Yap</button>
-        <button onclick="dinlen()">Dinlen</button>
-      `;
-    }
+  zeka: 1,
+  strateji: 0,
+  buyu: 0,
+  algi: 0,
 
-    function antrenman() {
-      guc++;
-      document.getElementById("hikaye").innerHTML = `
-        <p>Antrenman yaptın 💪 Gücün arttı.</p>
-        <p>Seviye: ${seviye} | Güç: ${guc}</p>
+  hayvan: 0,
+  evcil: 0,
+  savas: 0,
+  gizli: 0
+};
 
-        <button onclick="devam()">Devam Et</button>
-      `;
-    }
+function basla() {
+  document.getElementById("hikaye").innerHTML = `
+    <p>
+      Arda karanlık dünyada hayatta kalmaya çalışıyor.<br>
+      Güneş batmadan önce yeteneklerini geliştirmeli.
+    </p>
 
-    function dinlen() {
-      seviye++;
-      document.getElementById("hikaye").innerHTML = `
-        <p>Dinlendin ama zaman kaybettin ⏳</p>
-        <p>Seviye: ${seviye} | Güç: ${guc}</p>
+    <h3>💪 Güç</h3>
+    Güç: ${yetenekler.guc}/10
+    <button onclick="gelistir('guc')">+</button><br>
+    Yakın Dövüş: ${yetenekler.yakin}/10
+    <button onclick="gelistir('yakin')">+</button><br>
+    Dayanıklılık: ${yetenekler.dayanik}/10
+    <button onclick="gelistir('dayanik')">+</button><br>
+    Ağır Silah: ${yetenekler.agir}/10
+    <button onclick="gelistir('agir')">+</button>
 
-        <button onclick="devam()">Devam Et</button>
-      `;
-    }
+    <h3>⚡ Hız</h3>
+    Hız: ${yetenekler.hiz}/10
+    <button onclick="gelistir('hiz')">+</button><br>
+    Çeviklik: ${yetenekler.ceviklik}/10
+    <button onclick="gelistir('ceviklik')">+</button><br>
+    Kaçınma: ${yetenekler.kacinma}/10
+    <button onclick="gelistir('kacinma')">+</button><br>
+    İlk Vuruş: ${yetenekler.ilk}/10
+    <button onclick="gelistir('ilk')">+</button>
 
-    function devam() {
-      seviye++;
+    <h3>🧠 Zeka</h3>
+    Zeka: ${yetenekler.zeka}/10
+    <button onclick="gelistir('zeka')">+</button><br>
+    Strateji: ${yetenekler.strateji}/10
+    <button onclick="gelistir('strateji')">+</button><br>
+    Büyü Kontrolü: ${yetenekler.buyu}/10
+    <button onclick="gelistir('buyu')">+</button><br>
+    Algı: ${yetenekler.algi}/10
+    <button onclick="gelistir('algi')">+</button>
 
-      if (seviye >= 3) {
-        document.getElementById("hikaye").innerHTML = `
-          <h2>🌑 GECE ÇÖKTÜ</h2>
-          <p>Yaratıklar ortaya çıktı...</p>
-          <p>Son Güç: ${guc}</p>
-        `;
-      } else {
-        document.getElementById("hikaye").innerHTML = `
-          <p>Güneş hâlâ batmadı.</p>
-          <p>Seviye: ${seviye} | Güç: ${guc}</p>
+    <h3>🐺 Hayvan Bağlantısı</h3>
+    Hayvan Bağlantısı: ${yetenekler.hayvan}/10
+    <button onclick="gelistir('hayvan')">+</button><br>
+    Evcilleştirme: ${yetenekler.evcil}/10
+    <button onclick="gelistir('evcil')">+</button><br>
+    Hayvan Savaşı: ${yetenekler.savas}/10
+    <button onclick="gelistir('savas')">+</button><br>
+    Gizli Bağ: ${yetenekler.gizli}/10
+    <button onclick="gelistir('gizli')">+</button>
+  `;
+}
 
-          <button onclick="antrenman()">Antrenman Yap</button>
-          <button onclick="dinlen()">Dinlen</button>
-        `;
-      }
-    }
-  </script>
+function gelistir(y) {
+  if (yetenekler[y] < 10) {
+    yetenekler[y]++;
+    zaman++;
+  }
+
+  if (zaman >= 8) {
+    document.getElementById("hikaye").innerHTML = `
+      <h2>🌒 AKŞAM OLDU</h2>
+      <p>Canavarlar dalga dalga geliyor...</p>
+      <p>Seçimlerinin sonucuyle yüzleşeceksin.</p>
+    `;
+  } else {
+    basla();
+  }
+}
+
+basla();
+</script>
 
 </body>
 </html>
