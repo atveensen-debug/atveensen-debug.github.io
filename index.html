@@ -2,46 +2,83 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8">
-  <title>Survival Taslak</title>
+  <title>Hayatta Kal</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       background: #111;
       color: #eee;
       padding: 20px;
+      text-align: center;
     }
     button {
-      margin: 5px;
-      padding: 10px 15px;
+      margin: 8px;
+      padding: 10px 18px;
       cursor: pointer;
     }
     .panel {
       border: 1px solid #444;
-      padding: 10px;
-      margin-bottom: 10px;
+      padding: 12px;
+      margin: 10px auto;
+      max-width: 500px;
+      text-align: left;
     }
-    .warn {
-      color: #ff6666;
-    }
+    #game { display: none; }
   </style>
 </head>
-<body onload="basla()">
+<body>
 
-<h1>🕯 Hayatta Kal</h1>
+<!-- GİRİŞ EKRANI -->
+<div id="menu">
+  <h1>🕯 Hayatta Kal</h1>
+  <p>Bir gün daha dayanabilir misin?</p>
+  <button onclick="oyunuBaslat()">▶ Başla</button>
+  <button onclick="nasilOynanir()">❓ Nasıl Oynanır</button>
+</div>
 
-<div class="panel" id="stats"></div>
-<div class="panel" id="status"></div>
-<div class="panel" id="log"></div>
+<!-- OYUN -->
+<div id="game">
+  <h2>Oyun</h2>
 
-<div class="panel">
-  <button onclick="kesif()">Keşif Yap</button>
-  <button onclick="dinlen()">Dinlen</button>
-  <button onclick="gunuBitir()">Günü Bitir</button>
+  <div class="panel" id="stats"></div>
+  <div class="panel" id="status"></div>
+  <div class="panel" id="log"></div>
+
+  <div class="panel">
+    <button onclick="kesif()">Keşif Yap</button>
+    <button onclick="dinlen()">Dinlen</button>
+    <button onclick="gunuBitir()">Günü Bitir</button>
+  </div>
 </div>
 
 <script>
 let gun, can, enerji, odak, kesifYapildi;
 let kaliciYorgunluk = false;
+
+function oyunuBaslat() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("game").style.display = "block";
+  basla();
+}
+
+function nasilOynanir() {
+  alert(
+`Amaç:
+• Mümkün olduğunca çok gün hayatta kal
+
+Temel Mekanikler:
+• Keşif: Risklidir ama ilerleme sağlar
+• Dinlenme: Enerji verir ama zaman geçirir
+• Gece: Gün + durumuna göre seni yıpratır
+
+Durumlar:
+• Yaralı (can düşük)
+• Tükenmiş (enerji düşük)
+• Zihni Dağınık (odak yok)
+
+Her gün dünya daha tehlikeli olur.`
+  );
+}
 
 function basla() {
   gun = 1;
@@ -49,6 +86,7 @@ function basla() {
   enerji = 100;
   odak = 5;
   kesifYapildi = false;
+  kaliciYorgunluk = false;
   logYaz("Oyun başladı.");
   guncelle();
 }
@@ -70,8 +108,8 @@ function guncelle() {
     "<b>Durumlar:</b> " + (durumlar.length ? durumlar.join(", ") : "Normal");
 }
 
-function logYaz(metin) {
-  document.getElementById("log").innerHTML = metin;
+function logYaz(m) {
+  document.getElementById("log").innerHTML = m;
 }
 
 function kesif() {
@@ -88,9 +126,9 @@ function kesif() {
 
   if (Math.random() < risk) {
     can -= 10;
-    logYaz("Keşifte tehlikeli bir olay yaşadın. Can kaybettin.");
+    logYaz("Keşifte tehlikeli bir olay yaşadın.");
   } else {
-    logYaz("Keşif başarılı geçti.");
+    logYaz("Keşif sorunsuz geçti.");
   }
 
   sinirla();
@@ -98,10 +136,10 @@ function kesif() {
 }
 
 function dinlen() {
-  let enerjiKazanci = kaliciYorgunluk ? 10 : 20;
-  enerji += enerjiKazanci;
+  let kazanc = kaliciYorgunluk ? 10 : 20;
+  enerji += kazanc;
   can += 5;
-  logYaz("Dinlendin ama zaman geçti.");
+  logYaz("Dinlendin ama zaman ilerledi.");
   sinirla();
   guncelle();
 }
@@ -116,7 +154,6 @@ function gunuBitir() {
 function geceEtkileri() {
   let mesaj = "";
 
-  // Gün fazına göre temel cezalar
   if (gun <= 5) {
     enerji -= 5;
     mesaj = "Gece sakin geçti.";
@@ -131,25 +168,12 @@ function geceEtkileri() {
     mesaj = "Gece neredeyse hiç uyuyamadın.";
   }
 
-  // Durum bazlı ek cezalar
-  if (enerji < 30) {
-    can -= gun >= 6 ? 2 : 1;
-  }
-
+  if (enerji < 30) can -= gun >= 6 ? 2 : 1;
   if (can < 40 && gun >= 6) {
     enerji -= 5;
-    if (gun >= 16) {
-      kaliciYorgunluk = true;
-    }
+    if (gun >= 16) kaliciYorgunluk = true;
   }
-
-  if (odak <= 0 && gun >= 16) {
-    mesaj += " Zihnin tamamen çökmüş durumda.";
-  }
-
-  if (kesifYapildi && gun >= 16) {
-    can -= 1;
-  }
+  if (kesifYapildi && gun >= 16) can -= 1;
 
   sinirla();
   logYaz(mesaj);
