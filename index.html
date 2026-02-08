@@ -4,137 +4,140 @@
 <meta charset="UTF-8">
 <title>Hayatta Kal</title>
 <style>
-body { background:#111; color:#eee; font-family:Arial; text-align:center }
-button { margin:4px; padding:6px 12px; cursor:pointer }
-.panel { border:1px solid #444; padding:10px; margin:10px auto; max-width:600px; text-align:left }
-#game { display:none }
-.skill { font-size:14px }
+body{background:#111;color:#eee;font-family:Arial;text-align:center}
+button{margin:4px;padding:6px 12px;cursor:pointer}
+.panel{border:1px solid #444;padding:10px;margin:10px auto;max-width:650px;text-align:left}
+#game,#end{display:none}
+.choice button{display:block;margin:6px 0}
 </style>
 </head>
 <body>
 
 <div id="menu">
   <h1>🕯 Hayatta Kal</h1>
-  <button onclick="oyunuBaslat()">▶ Başla</button>
+  <p>Her gün bir bedel.</p>
+  <button onclick="baslat()">▶ Başla</button>
 </div>
 
 <div id="game">
   <div class="panel" id="stats"></div>
   <div class="panel" id="status"></div>
-  <div class="panel" id="skills"></div>
+  <div class="panel" id="story"></div>
   <div class="panel" id="log"></div>
+  <div class="panel" id="choices"></div>
 
   <div class="panel">
     <button onclick="kesif()">Keşif</button>
     <button onclick="dinlen()">Dinlen</button>
     <button onclick="gunuBitir()">Günü Bitir</button>
+    <button onclick="oyunuBitir()">Oyunu Bitir</button>
   </div>
 </div>
 
+<div id="end">
+  <h2>Oyun Bitti</h2>
+  <div class="panel" id="summary"></div>
+  <button onclick="location.reload()">Yeniden Başla</button>
+</div>
+
 <script>
-let gun, can, enerji, odak, kesifYapildi;
-let maxCan = 100, maxEnerji = 100, maxOdak = 5;
-let yetenekPuani = 0;
-let yetenekler = {};
+let gun,can,enerji,odak;
+let kesifSay=0,dinlenSay=0,toplamHasar=0;
+let seciliOlay=null;
 
-const YETENEK_LISTESI = {
-  "Fiziksel": ["Dayanıklılık","Sert Deri","Hızlı Toparlanma","Güç"],
-  "Zihinsel": ["Odaklanma","Soğukkanlı","Strateji","Hafıza"],
-  "Hayatta Kalma": ["Avcılık","Toplayıcılık","Kampçılık","İlk Yardım"],
-  "Keşif": ["İz Sürme","Cesaret","Çeviklik","Şans"]
-};
-
-function oyunuBaslat(){
+function baslat(){
   menu.style.display="none";
   game.style.display="block";
-  basla();
-}
-
-function basla(){
-  gun=1; can=100; enerji=100; odak=5;
-  yetenekPuani=0; yetenekler={};
-  logYaz("Oyun başladı.");
-  guncelle();
+  gun=1;can=100;enerji=100;odak=5;
+  guncelle(); hikaye();
 }
 
 function guncelle(){
-  stats.innerHTML=`<b>Gün:</b> ${gun}<br>
-  ❤️ ${can}/${maxCan} ⚡ ${enerji}/${maxEnerji} 🎯 ${odak}/${maxOdak}<br>
-  ⭐ Yetenek Puanı: ${yetenekPuani}`;
-
+  stats.innerHTML=`<b>Gün:</b> ${gun}<br>❤️ ${can} ⚡ ${enerji} 🎯 ${odak}`;
   let d=[];
   if(can<40)d.push("Yaralı");
   if(enerji<30)d.push("Tükenmiş");
   if(odak<=0)d.push("Zihni Dağınık");
   status.innerHTML="<b>Durum:</b> "+(d.length?d.join(", "):"Normal");
-
-  let s="<b>Yetenekler</b><br>";
-  for(let kat in YETENEK_LISTESI){
-    s+=`<u>${kat}</u><br>`;
-    YETENEK_LISTESI[kat].forEach(y=>{
-      if(yetenekler[y]) s+=`✔ ${y}<br>`;
-      else if(yetenekPuani>0) s+=`<button class="skill" onclick="al('${y}')">${y}</button><br>`;
-      else s+=`• ${y}<br>`;
-    });
-  }
-  skills.innerHTML=s;
 }
 
-function al(y){
-  yetenekler[y]=true;
-  yetenekPuani--;
-  if(y==="Dayanıklılık") maxCan+=10;
-  if(y==="Odaklanma") maxOdak+=1;
-  guncelle();
+function hikaye(){
+  let h="";
+  if(gun==1)h="Nerede olduğunu hatırlamıyorsun.";
+  if(gun==5)h="Geceler artık daha uzun.";
+  if(gun==10)h="Bu yer seni izliyor gibi.";
+  if(gun==15)h="Bazı izler sana ait değil.";
+  if(gun==20)h="Buradan sağ çıkmak mümkün mü?";
+  story.innerHTML=h?("<b>Hikâye:</b><br>"+h):"";
 }
+
+function logYaz(t){ log.innerHTML=t }
 
 function kesif(){
-  if(odak<=0 && !yetenekler["Hafıza"]){ logYaz("Odak yok."); return; }
-  kesifYapildi=true;
-  odak--; enerji-=10-(yetenekler["Çeviklik"]?3:0);
+  if(odak<=0){logYaz("Odak yok.");return;}
+  kesifSay++; odak--; enerji-=10;
+  if(Math.random()<0.5){ olayBaslat(); }
+  else{ logYaz("Sessiz bir keşif."); }
+  sinirla(); guncelle();
+}
 
-  let risk = gun>=16?0.7:gun>=6?0.5:0.3;
-  if(yetenekler["Strateji"]) risk-=0.1;
-  if(yetenekler["İz Sürme"]) risk-=0.1;
+function olayBaslat(){
+  seciliOlay="hayvan";
+  choices.innerHTML=`
+  <b>Olay:</b> Yaralı bir hayvanla karşılaştın.
+  <div class="choice">
+    <button onclick="secim('yardim')">Yardım Et</button>
+    <button onclick="secim('kac')">Uzak Dur</button>
+    <button onclick="secim('av')">Avla</button>
+  </div>`;
+}
 
-  if(Math.random()<risk){
-    let dmg=10-(yetenekler["Sert Deri"]?2:0);
-    can-=dmg;
-    logYaz("Tehlikeli keşif!");
-  } else {
-    logYaz("Keşif başarılı.");
-    if(yetenekler["Toplayıcılık"]) enerji+=5;
+function secim(s){
+  choices.innerHTML="";
+  if(s=="yardim"){
+    can-=5; logYaz("Hayvan kaçtı ama içini kemiren bir his kaldı.");
+  }
+  if(s=="kac"){
+    logYaz("Hiçbir şey olmadı.");
+  }
+  if(s=="av"){
+    enerji+=10; can-=8; toplamHasar+=8;
+    logYaz("Hayatta kaldın ama bedeli oldu.");
   }
   sinirla(); guncelle();
 }
 
 function dinlen(){
-  enerji+=20+(yetenekler["Hızlı Toparlanma"]?5:0);
-  can+=5;
+  dinlenSay++; enerji+=20; can+=5;
   logYaz("Dinlendin.");
   sinirla(); guncelle();
 }
 
 function gunuBitir(){
-  if(gun%3===0) yetenekPuani++;
-  gece();
-  gun++; kesifYapildi=false;
-  guncelle();
-}
-
-function gece(){
   enerji-=gun<=5?5:gun<=15?8:10;
-  if(gun>5) odak-=yetenekler["Soğukkanlı"]?0:1;
-  if(gun>15) can-=yetenekler["İlk Yardım"]?1:2;
-  if(yetenekler["Kampçılık"]) enerji+=2;
-  sinirla();
+  if(gun>10){can-=2; toplamHasar+=2;}
+  gun++; hikaye();
+  sinirla(); guncelle();
 }
 
-function logYaz(t){ log.innerHTML=t }
+function oyunuBitir(){
+  game.style.display="none";
+  end.style.display="block";
+  let tarz="Dengeli";
+  if(kesifSay>dinlenSay)tarz="Risk Alan Kaşif";
+  if(dinlenSay>kesifSay)tarz="Temkinli Hayatta Kalan";
+  summary.innerHTML=`
+  Gün: ${gun}<br>
+  Keşif: ${kesifSay}<br>
+  Dinlenme: ${dinlenSay}<br>
+  Alınan Hasar: ${toplamHasar}<br>
+  <b>Oyun Tarzı:</b> ${tarz}`;
+}
+
 function sinirla(){
-  can=Math.max(0,Math.min(maxCan,can));
-  enerji=Math.max(0,Math.min(maxEnerji,enerji));
-  odak=Math.max(0,Math.min(maxOdak,odak));
+  can=Math.max(0,Math.min(100,can));
+  enerji=Math.max(0,Math.min(100,enerji));
+  odak=Math.max(0,odak);
 }
 </script>
 </body>
