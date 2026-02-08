@@ -2,250 +2,194 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<title>Arda – Son Çocuk</title>
-
+<title>ARDA – Son Çocuk</title>
 <style>
-body{
-  background:#111;
+body {
+  background:#0f0f0f;
   color:#eee;
-  font-family:Arial;
-  margin:0;
-  text-align:center;
+  font-family: Arial;
+  padding:15px;
 }
-button{
-  margin:4px;
-  padding:6px 12px;
-  cursor:pointer;
+h2,h3 { margin-top:10px; }
+button {
+  width:100%;
+  padding:8px;
+  margin:4px 0;
 }
-.screen{display:none;padding:20px}
-#menu{display:block;min-height:100vh}
-.box{
+.box {
   border:1px solid #444;
   padding:10px;
-  margin:10px 0;
+  margin-bottom:10px;
+}
+.log {
+  background:#000;
+  height:180px;
+  overflow-y:auto;
+  padding:8px;
+  font-size:14px;
+}
+.skill {
+  display:flex;
+  justify-content:space-between;
+  margin:3px 0;
 }
 </style>
 </head>
 
 <body>
 
-<!-- MENU -->
-<div id="menu" class="screen">
-  <h1>🕯️ Arda – Son Çocuk</h1>
-  <button onclick="oyunaBasla()">▶ Oyuna Başla</button><br>
-  <button onclick="nasilOynanir()">📖 Nasıl Oynanır</button><br>
-  <button onclick="ayarlar()">⚙ Ayarlar</button>
-</div>
-
-<!-- HOW TO -->
-<div id="howto" class="screen">
-  <h2>Nasıl Oynanır</h2>
-  <p>
-    Gündüz yeteneklerini geliştir.<br>
-    Gece olaylarla yüzleş.<br>
-    Amaç: mümkün olduğunca çok gün hayatta kalmak.
-  </p>
-  <button onclick="anaMenu()">⬅ Geri</button>
-</div>
-
-<!-- SETTINGS -->
-<div id="settings" class="screen">
-  <h2>Ayarlar</h2>
-  <button onclick="ayarZorluk('kolay')">Kolay</button>
-  <button onclick="ayarZorluk('normal')">Normal</button>
-  <button onclick="ayarZorluk('zor')">Zor</button>
-  <p>Zorluk: <b id="zorlukYazi">Normal</b></p>
-  <button onclick="anaMenu()">⬅ Menü</button>
-</div>
-
-<!-- GAME -->
-<div id="game" class="screen">
-
-<h2>🕯️ Arda</h2>
+<h2>🌑 Gün <span id="day">1</span></h2>
 
 <div class="box">
-  Gün: <span id="gun"></span><br>
-  Tehdit: <b><span id="tehdit"></span></b><br>
-  ❤️ Can: <span id="can"></span><br>
-  ⚡ Enerji: <span id="enerji"></span><br>
-  💠 Odak: <span id="odak"></span><br>
-  ⏳ Hamle: <span id="zaman"></span>
+❤️ Can: <span id="health">100</span><br>
+⚡ Enerji: <span id="energy">100</span><br>
+🎯 Odak: <span id="focus">3</span><br>
+💰 Para: <span id="gold">50</span>
 </div>
 
-<div id="olay" class="box" style="display:none">
-  <p id="olayMetin"></p>
-  <div id="olaySecenek"></div>
+<div class="box">
+<h3>🧭 Günlük Seçimler</h3>
+<button onclick="explore()">Keşfe Çık</button>
+<button onclick="rest()">Dinlen</button>
+<button onclick="endDay()">Günü Bitir</button>
 </div>
 
-<div id="yetenekler"></div>
-
-<button onclick="dinlen()">💤 Dinlen</button>
-<button onclick="anaMenu()">Ana Menü</button>
-
-<hr>
-<div id="log"></div>
-
+<div class="box">
+<h3>🧠 Yetenekler</h3>
+<div id="skills"></div>
 </div>
+
+<div class="box log" id="log"></div>
 
 <script>
-/* AYARLAR */
-let ayarlarData={zorluk:"normal"}
+let day = 1;
+let health = 100;
+let energy = 100;
+let focus = 3;
+let gold = 50;
 
-/* EKRAN */
-function gizle(){
-  ["menu","howto","settings","game"].forEach(i=>{
-    document.getElementById(i).style.display="none"
-  })
-}
-function anaMenu(){gizle();menu.style.display="block"}
-function nasilOynanir(){gizle();howto.style.display="block"}
-function ayarlar(){gizle();settings.style.display="block"}
-function oyunaBasla(){gizle();game.style.display="block";basla()}
+let exploredToday = false;
+let animalPenaltyTomorrow = false;
 
-/* AYAR */
-function ayarZorluk(z){
-  ayarlarData.zorluk=z
-  zorlukYazi.innerText=z
-}
+const skills = {
+  "Fiziksel": ["Güç", "Dayanıklılık", "Hız", "Çeviklik"],
+  "Savaş": ["Yakın Dövüş", "Savunma", "Refleks", "Silah"],
+  "Hayatta Kalma": ["Açlık", "Soğuk", "Zehir", "Uyum"],
+  "Doğa": ["İz Sürme", "Toplama", "Hayvan Bağı", "Keşif"]
+};
 
-/* OYUN */
-let can,enerji,odak,zaman,gun,aktifTehdit
-let maxCan=10,maxEnerji=6
+let skillLevels = {};
+Object.values(skills).flat().forEach(s => skillLevels[s] = 1);
 
-let kategoriler={
-  Fiziksel:["Güç","Hız","Dayanıklılık","Çeviklik"],
-  Hayatta:["Avcılık","İz sürme","Barınak","İlk yardım"],
-  Karanlık:["Gölge","Korku direnci","Algı","Sessizlik"],
-  Bağ:["Hayvan","Sezgi","Doğa","Gizli bağ"]
+function log(t){
+  const l = document.getElementById("log");
+  l.innerHTML += t + "<br>";
+  l.scrollTop = l.scrollHeight;
 }
 
-let yetenekler={}
-
-function basla(){
-  can=10;enerji=6;odak=10;gun=1
-  for(let k in kategoriler)
-    kategoriler[k].forEach(y=>yetenekler[y]=0)
-  yeniGun()
+function updateUI(){
+  dayEl().innerText = day;
+  document.getElementById("health").innerText = health;
+  document.getElementById("energy").innerText = energy;
+  document.getElementById("focus").innerText = focus;
+  document.getElementById("gold").innerText = gold;
 }
 
-function yeniGun(){
-  zaman=6
-  aktifTehdit=rastgeleTehdit()
-  yaz(`🌅 Gün ${gun} başladı`)
-  guncelle();butonlar()
-}
+function dayEl(){ return document.getElementById("day"); }
 
-function rastgeleTehdit(){
-  let k=Object.keys(kategoriler)
-  return k[Math.floor(Math.random()*k.length)]
-}
-
-function guncelle(){
-  gunEl("gun",gun)
-  gunEl("can",can+"/"+maxCan)
-  gunEl("enerji",enerji+"/"+maxEnerji)
-  gunEl("odak",odak)
-  gunEl("zaman",zaman)
-  gunEl("tehdit",aktifTehdit)
-}
-function gunEl(i,v){document.getElementById(i).innerText=v}
-
-function butonlar(){
-  let a=document.getElementById("yetenekler")
-  a.innerHTML=""
-  for(let k in kategoriler){
-    a.innerHTML+=`<h3>${k}</h3>`
-    kategoriler[k].forEach(y=>{
-      a.innerHTML+=`<button onclick="gelistir('${y}')">${y} (${yetenekler[y]})</button>`
-    })
+function renderSkills(){
+  const box = document.getElementById("skills");
+  box.innerHTML = "";
+  for (let cat in skills){
+    box.innerHTML += `<strong>${cat}</strong><br>`;
+    skills[cat].forEach(s=>{
+      box.innerHTML += `
+      <div class="skill">
+        ${s} (Lv ${skillLevels[s]})
+        <button onclick="upgradeSkill('${s}')">+</button>
+      </div>`;
+    });
   }
 }
 
-function gelistir(y){
-  if(enerji<2||odak<=0)return yaz("Yorgunsun.")
-  yetenekler[y]++
-  enerji-=2;odak--;zaman--
-  kontrol()
+function upgradeSkill(s){
+  if (gold < 10 || focus < 1) {
+    log("❌ Yetersiz para veya odak.");
+    return;
+  }
+  if (skillLevels[s] >= 10) {
+    log("⚠️ Bu yetenek zaten maksimum.");
+    return;
+  }
+  gold -= 10;
+  focus -= 1;
+  skillLevels[s]++;
+  log(`⬆️ ${s} geliştirildi (Lv ${skillLevels[s]})`);
+  updateUI();
+  renderSkills();
 }
 
-function dinlen(){
-  enerji=Math.min(maxEnerji,enerji+3)
-  can=Math.min(maxCan,can+1)
-  zaman--
-  kontrol()
+function explore(){
+  if (exploredToday){
+    log("❌ Bugün zaten keşif yaptın.");
+    return;
+  }
+  if (energy < 10){
+    log("❌ Çok yorgunsun.");
+    return;
+  }
+  exploredToday = true;
+  energy -= 10;
+
+  let roll = Math.random();
+
+  if (roll < 0.35){
+    let dmg = 10 + Math.floor(Math.random()*10);
+    health -= dmg;
+    animalPenaltyTomorrow = true;
+    log(`🐗 Hayvan saldırısı! -${dmg} can`);
+    log("⚠️ Etkisi yarın da sürecek.");
+  }
+  else if (roll < 0.7){
+    focus++;
+    gold += 10;
+    log("🌿 Faydalı bir şey buldun. +1 odak, +10 para");
+  }
+  else {
+    log("🌫️ Keşif sakin geçti.");
+  }
+
+  updateUI();
 }
 
-function kontrol(){
-  guncelle();butonlar()
-  if(zaman<=0)gece()
+function rest(){
+  energy += 20;
+  if (energy > 100) energy = 100;
+  log("😴 Dinlendin.");
+  updateUI();
 }
 
-/* GECE */
-function gece(){
-  if(aktifTehdit=="Karanlık") olayTakip()
-  else if(aktifTehdit=="Fiziksel") olayYaratik()
-  else standartGece()
+function endDay(){
+  log("🌙 Gece oldu...");
+  energy -= 15;
+
+  if (animalPenaltyTomorrow){
+    energy -= 10;
+    log("🐾 Hayvan saldırısının etkisi devam ediyor.");
+    animalPenaltyTomorrow = false;
+  }
+
+  if (energy < 0) energy = 0;
+
+  exploredToday = false;
+  day++;
+  log("☀️ Yeni gün başladı.");
+  updateUI();
 }
 
-function standartGece(){
-  yaz("Gece sakin geçti.")
-  gun++; yeniGun()
-}
-
-/* OLAYLAR */
-function olayTakip(){
-  olayGoster(
-    "Karanlıkta bir şey seni izliyor.",
-    [
-      {t:"👁️ Saklan",f:()=>sonuc(toplam("Karanlık"),3,1)},
-      {t:"🏃 Kaç",f:()=>{enerji-=2;sonuc(toplam("Hayatta"),2,1)}}
-    ]
-  )
-}
-
-function olayYaratik(){
-  olayGoster(
-    "Bir yaratık yolunu kesiyor.",
-    [
-      {t:"🔪 Savaş",f:()=>{odak-=2;sonuc(toplam("Fiziksel"),4,2)}},
-      {t:"🏃 Kaç",f:()=>{enerji-=3;can-=1;bitir("Zorlukla kaçtın.")}}
-    ]
-  )
-}
-
-/* YARDIMCI */
-function olayGoster(m,sec){
-  olay.style.display="block"
-  olayMetin.innerText=m
-  olaySecenek.innerHTML=""
-  sec.forEach(s=>{
-    let b=document.createElement("button")
-    b.innerText=s.t
-    b.onclick=s.f
-    olaySecenek.appendChild(b)
-  })
-}
-
-function sonuc(guc,esik,ceza){
-  if(guc>=esik) bitir("Başardın.")
-  else{can-=ceza;bitir("Bedel ödedin.")}
-}
-
-function bitir(m){
-  olay.style.display="none"
-  yaz(m)
-  gun++; yeniGun()
-}
-
-function toplam(k){
-  let t=0
-  kategoriler[k].forEach(y=>t+=yetenekler[y])
-  return t
-}
-
-function yaz(m){
-  log.innerHTML="<p>"+m+"</p>"
-}
+renderSkills();
+updateUI();
+log("🎮 Arda dünyada tek başına kaldı...");
 </script>
 
 </body>
