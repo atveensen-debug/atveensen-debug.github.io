@@ -36,9 +36,17 @@
 </div>
 <script>
 (function() {
-    // ✅ Güncel ve çalışan bağlantılar
-    const VOD_URL = 'https://raw.githubusercontent.com/emrullahozkilic/iptv/main/tr_vod.m3u'; // Film & Dizi listesi
-    const LIVE_URL = 'https://raw.githubusercontent.com/iptv-turk-tr/iptv/main/list.m3u';   // Canlı TV listesi
+    // 🎯 VOD listeleri (sırayla denenir, ilk çalışan kullanılır)
+    const VOD_URLS = [
+        'https://raw.githubusercontent.com/emrullahozkilic/iptv/main/tr_vod.m3u',
+        'https://raw.githubusercontent.com/jromero88/iptv/master/VOD.m3u',
+        'https://itasli.github.io/TURKTV/vod.m3u',
+        'https://raw.githubusercontent.com/rideordie16/tv/main/tv2.m3u',
+        'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/tr.m3u',
+        'https://streams.uzunmuhalefet.com/lists/tr.m3u'
+    ];
+
+    const LIVE_URL = 'https://raw.githubusercontent.com/iptv-turk-tr/iptv/main/list.m3u';
 
     const video = document.getElementById('video');
     const selectRow = document.getElementById('selectRow');
@@ -90,47 +98,74 @@
         }
     }
 
+    // VOD yükleme: URL'leri sırayla dene
     async function loadVOD() {
         if (vodLoaded) return;
-        statusEl.innerText = '📡 VOD listesi alınıyor...';
-        selectRow.innerHTML = '<span style="color:#aaa;">⏳ Film/Dizi listesi yükleniyor, lütfen bekleyin...</span>';
-        try {
-            const resp = await fetch(VOD_URL);
-            if (!resp.ok) throw new Error(`HTTP ${resp.status} - Liste bulunamadı`);
-            const text = await resp.text();
-            const lines = text.split('\n');
-            let currentItem = null;
-            const items = {};
-            let total = 0;
-            for (let line of lines) {
-                line = line.trim();
-                if (line.startsWith('#EXTINF:')) {
-                    const groupMatch = line.match(/group-title="([^"]*)"/);
-                    const titleMatch = line.match(/,([^,]+)$/);
-                    const logoMatch = line.match(/tvg-logo="([^"]*)"/);
-                    const title = titleMatch ? titleMatch[1].trim() : 'Bilinmeyen';
-                    const group = groupMatch ? groupMatch[1].trim() : 'Diğer';
-                    const logo = logoMatch ? logoMatch[1].trim() : '';
-                    currentItem = { title, group, logo, url: '' };
-                } else if (line && !line.startsWith('#') && currentItem) {
-                    if (line.startsWith('http://') || line.startsWith('https://')) {
-                        currentItem.url = line;
-                        if (!items[currentItem.group]) items[currentItem.group] = [];
-                        items[currentItem.group].push({ title: currentItem.title, url: currentItem.url, logo: currentItem.logo });
-                        total++;
-                        currentItem = null;
-                    } else currentItem = null;
-                }
+        statusEl.innerText = '📡 VOD listesi aranıyor...';
+        selectRow.innerHTML = '<span style="color:#aaa;">⏳ VOD kaynakları taranıyor, lütfen bekleyin...</span>';
+
+        let success = false;
+        for (let i = 0; i < VOD_URLS.length; i++) {
+            const url = VOD_URLS[i];
+            statusEl.innerText = `📡 Deneniyor (${i+1}/${VOD_URLS.length}): ${url.substring(0, 50)}...`;
+            try {
+                const resp = await fetch(url);
+                if (!resp.ok) continue;
+                const text = await resp.text();
+                // Parse et
+                const items = parseVOD(text);
+                if (Object.keys(items).length === 0) continue;
+                // Başarılı
+                vodData = items;
+                vodLoaded = true;
+                const total = Object.values(items).reduce((acc, arr) => acc + arr.length, 0);
+                statusEl.innerText = `✅ VOD başarılı (${total} içerik) - Kaynak: ${url}`;
+                success = true;
+                break;
+            } catch (e) {
+                console.warn('VOD denemesi başarısız:', url, e.message);
             }
-            if (Object.keys(items).length === 0) throw new Error('Liste boş veya tanınmadı');
-            vodData = items;
-            vodLoaded = true;
-            statusEl.innerText = `✅ ${total} film/dizi içeriği yüklendi`;
-            if (currentMode === 'vod') renderVODControls();
-        } catch (err) {
-            statusEl.innerText = '❌ VOD yüklenemedi: ' + err.message;
-            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Film/Dizi listesi alınamadı. Lütfen sayfayı yenileyin veya farklı bir VOD linki deneyin.</span>';
         }
+
+        if (!success) {
+            statusEl.innerText = '❌ Tüm VOD kaynakları başarısız!';
+            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Hiçbir VOD listesi çalışmadı. Lütfen daha sonra tekrar deneyin.</span>';
+            return;
+        }
+
+        if (currentMode === 'vod') renderVODControls();
+    }
+
+    // M3U parse fonksiyonu (group-title olmasa da çalışır)
+    function parseVOD(text) {
+        const lines = text.split('\n');
+        const items = {};
+        let currentTitle = '';
+        let currentGroup = 'Diğer';
+        let currentLogo = '';
+
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith('#EXTINF:')) {
+                const groupMatch = line.match(/group-title="([^"]*)"/);
+                currentGroup = groupMatch ? groupMatch[1].trim() : 'Diğer';
+                const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+                currentLogo = logoMatch ? logoMatch[1].trim() : '';
+                const titleMatch = line.match(/,([^,]+)$/);
+                currentTitle = titleMatch ? titleMatch[1].trim() : 'Bilinmeyen';
+            } else if (line && !line.startsWith('#') && currentTitle) {
+                if (line.startsWith('http://') || line.startsWith('https://')) {
+                    if (!items[currentGroup]) items[currentGroup] = [];
+                    items[currentGroup].push({
+                        title: currentTitle,
+                        url: line,
+                        logo: currentLogo
+                    });
+                }
+                currentTitle = ''; // reset
+            }
+        }
+        return items;
     }
 
     function renderVODControls() {
@@ -171,6 +206,7 @@
         }
     }
 
+    // Canlı TV (değişmedi)
     async function loadLive() {
         if (liveLoaded) return;
         statusEl.innerText = '📡 Canlı TV listesi alınıyor...';
