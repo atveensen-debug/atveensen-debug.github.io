@@ -8,17 +8,24 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a0a0a; font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; color: #fff; }
-        #controls { background: #1a1a1a; padding: 10px 14px; border-bottom: 1px solid #333; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
-        #tabs { display: flex; gap: 6px; }
-        .tab-btn { flex: 1; padding: 10px 16px; background: #2a2a2a; border: 1px solid #444; color: #aaa; font-size: 15px; font-weight: 600; border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.2s; text-align: center; }
+        #controls { background: #1a1a1a; padding: 10px 14px; border-bottom: 1px solid #333; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; max-height: 20%; }
+        #tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+        .tab-btn { flex: 1; min-width: 130px; padding: 10px 16px; background: #2a2a2a; border: 1px solid #444; color: #aaa; font-size: 15px; font-weight: 600; border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.2s; text-align: center; }
         .tab-btn.active { background: #1a1a1a; color: #fff; border-bottom: 2px solid #e50914; }
-        #selectRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-        #selectRow select { background: #222; color: #fff; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; font-size: 14px; flex: 1; min-width: 130px; }
+        #selectRow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-items: center; }
+        @media (min-width: 768px) { #selectRow { grid-template-columns: auto 1fr auto 1fr; } }
+        #selectRow select, #selectRow input { background: #222; color: #fff; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; font-size: 14px; width: 100%; }
         #selectRow label { color: #aaa; font-weight: 600; font-size: 13px; }
-        #status { color: #aaa; font-size: 12px; }
+        #status { color: #aaa; font-size: 12px; padding: 6px 0; }
+        #progress-bar { background: #444; height: 3px; border-radius: 2px; overflow: hidden; margin-top: 4px; }
+        #progress { background: #e50914; height: 100%; width: 0%; transition: width 0.3s; }
         #video-container { flex: 1; position: relative; background: #000; }
         video { width: 100%; height: 100%; position: absolute; top: 0; left: 0; object-fit: contain; }
         .loading { color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); padding: 12px 24px; border-radius: 10px; }
+        .category-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+        .chip { padding: 6px 12px; background: #2a2a2a; border: 1px solid #444; color: #aaa; border-radius: 20px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
+        .chip.active { background: #e50914; color: #fff; border-color: #e50914; }
+        .chip:hover { border-color: #e50914; }
     </style>
 </head>
 <body>
@@ -28,21 +35,26 @@
         <button id="tabLIVE" class="tab-btn">📺 Canlı TV</button>
     </div>
     <div id="selectRow"></div>
+    <div id="categoryChips" class="category-chips"></div>
     <div id="status">🔄 Başlatılıyor...</div>
+    <div id="progress-bar"><div id="progress"></div></div>
 </div>
 <div id="video-container">
     <video id="video" controls playsinline></video>
     <div id="loadingIndicator" class="loading" style="display:none;">⏳ Akış bağlanıyor...</div>
 </div>
+
 <script>
 (function() {
-    // 🎯 VOD listeleri (sırayla denenir, ilk çalışan kullanılır)
+    // 🎯 Geliştirilmiş VOD kaynakları (birden fazla yedek)
     const VOD_URLS = [
         'https://raw.githubusercontent.com/emrullahozkilic/iptv/main/tr_vod.m3u',
+        'https://pastebin.com/raw/hW3VrXSN',
         'https://raw.githubusercontent.com/jromero88/iptv/master/VOD.m3u',
         'https://itasli.github.io/TURKTV/vod.m3u',
         'https://raw.githubusercontent.com/rideordie16/tv/main/tv2.m3u',
         'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/tr.m3u',
+        'https://iptvcat.com/iptv/tr.m3u',
         'https://streams.uzunmuhalefet.com/lists/tr.m3u'
     ];
 
@@ -52,8 +64,10 @@
     const selectRow = document.getElementById('selectRow');
     const statusEl = document.getElementById('status');
     const loadingEl = document.getElementById('loadingIndicator');
+    const progressBar = document.getElementById('progress');
     const tabVOD = document.getElementById('tabVOD');
     const tabLIVE = document.getElementById('tabLIVE');
+    const categoryChipsDiv = document.getElementById('categoryChips');
 
     let hls = null;
     let currentMode = 'vod';
@@ -61,6 +75,13 @@
     let liveData = [];
     let vodLoaded = false;
     let liveLoaded = false;
+    let selectedCategory = '';
+    let allVodItems = [];
+
+    function updateProgress(current, total) {
+        const percent = (current / total) * 100;
+        progressBar.style.width = percent + '%';
+    }
 
     function playStream(url) {
         if (!url) return;
@@ -70,6 +91,7 @@
         video.pause();
         video.removeAttribute('src');
         video.load();
+
         if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = url;
             video.play().catch(()=>{});
@@ -78,7 +100,7 @@
                 statusEl.innerText = '▶️ Oynatılıyor (Native)';
             };
         } else if (Hls.isSupported()) {
-            hls = new Hls();
+            hls = new Hls({ debug: false });
             hls.loadSource(url);
             hls.attachMedia(video);
             hls.on(Hls.Events.MANIFEST_PARSED, () => {
@@ -89,7 +111,7 @@
             hls.on(Hls.Events.ERROR, (event, data) => {
                 if (data.fatal) {
                     loadingEl.style.display = 'none';
-                    statusEl.innerText = '❌ Akış hatası';
+                    statusEl.innerText = '❌ Akış hatası - başka bir kanal deneyin';
                 }
             });
         } else {
@@ -98,45 +120,7 @@
         }
     }
 
-    // VOD yükleme: URL'leri sırayla dene
-    async function loadVOD() {
-        if (vodLoaded) return;
-        statusEl.innerText = '📡 VOD listesi aranıyor...';
-        selectRow.innerHTML = '<span style="color:#aaa;">⏳ VOD kaynakları taranıyor, lütfen bekleyin...</span>';
-
-        let success = false;
-        for (let i = 0; i < VOD_URLS.length; i++) {
-            const url = VOD_URLS[i];
-            statusEl.innerText = `📡 Deneniyor (${i+1}/${VOD_URLS.length}): ${url.substring(0, 50)}...`;
-            try {
-                const resp = await fetch(url);
-                if (!resp.ok) continue;
-                const text = await resp.text();
-                // Parse et
-                const items = parseVOD(text);
-                if (Object.keys(items).length === 0) continue;
-                // Başarılı
-                vodData = items;
-                vodLoaded = true;
-                const total = Object.values(items).reduce((acc, arr) => acc + arr.length, 0);
-                statusEl.innerText = `✅ VOD başarılı (${total} içerik) - Kaynak: ${url}`;
-                success = true;
-                break;
-            } catch (e) {
-                console.warn('VOD denemesi başarısız:', url, e.message);
-            }
-        }
-
-        if (!success) {
-            statusEl.innerText = '❌ Tüm VOD kaynakları başarısız!';
-            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Hiçbir VOD listesi çalışmadı. Lütfen daha sonra tekrar deneyin.</span>';
-            return;
-        }
-
-        if (currentMode === 'vod') renderVODControls();
-    }
-
-    // M3U parse fonksiyonu (group-title olmasa da çalışır)
+    // Geliştirilmiş M3U parse fonksiyonu
     function parseVOD(text) {
         const lines = text.split('\n');
         const items = {};
@@ -162,57 +146,170 @@
                         logo: currentLogo
                     });
                 }
-                currentTitle = ''; // reset
+                currentTitle = '';
             }
         }
         return items;
     }
 
+    // VOD yükleme: hata yönetimi iyileştirildi
+    async function loadVOD() {
+        if (vodLoaded) return;
+        statusEl.innerText = '📡 VOD listesi aranıyor...';
+        selectRow.innerHTML = '<span style="color:#aaa;">⏳ VOD kaynakları taranıyor, lütfen bekleyin...</span>';
+        categoryChipsDiv.innerHTML = '';
+
+        let success = false;
+        for (let i = 0; i < VOD_URLS.length; i++) {
+            const url = VOD_URLS[i];
+            updateProgress(i, VOD_URLS.length);
+            statusEl.innerText = `📡 Deneniyor (${i+1}/${VOD_URLS.length}): ${new URL(url).hostname}`;
+            
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 saniye timeout
+                
+                const resp = await fetch(url, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                if (!resp.ok) {
+                    console.warn(`${url} - HTTP ${resp.status}`);
+                    continue;
+                }
+                
+                const text = await resp.text();
+                if (text.length < 100) continue; // Boş yanıt kontrolü
+                
+                const items = parseVOD(text);
+                if (Object.keys(items).length === 0) continue;
+                
+                vodData = items;
+                vodLoaded = true;
+                allVodItems = [];
+                for (let cat in items) {
+                    allVodItems = allVodItems.concat(items[cat]);
+                }
+                
+                const total = allVodItems.length;
+                statusEl.innerText = `✅ VOD başarılı (${total} içerik)`;
+                updateProgress(VOD_URLS.length, VOD_URLS.length);
+                success = true;
+                break;
+            } catch (e) {
+                console.warn('VOD denemesi başarısız:', url, e.message);
+            }
+        }
+
+        if (!success) {
+            statusEl.innerText = '❌ Tüm VOD kaynakları başarısız!';
+            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ VOD kaynakları şu anda erişilemez. Lütfen daha sonra deneyin.</span>';
+            return;
+        }
+
+        if (currentMode === 'vod') renderVODControls();
+    }
+
     function renderVODControls() {
         const sortedGroups = Object.keys(vodData).sort((a,b)=>a.localeCompare(b));
+        
         selectRow.innerHTML = `
+            <label for="vodSearch">🔍 Ara:</label>
+            <input type="text" id="vodSearch" placeholder="Film/Dizi adı girin...">
             <label for="vodCategory">🗂️ Kategori:</label>
             <select id="vodCategory">
-                <option value="">Tüm Kategoriler</option>
+                <option value="">Tüm Kategoriler (${allVodItems.length})</option>
                 ${sortedGroups.map(g => `<option value="${g}">${g} (${vodData[g].length})</option>`).join('')}
             </select>
-            <label for="vodItem">🎞️ İçerik:</label>
-            <select id="vodItem"><option value="">--- Kategori seçin ---</option></select>
         `;
-        const catSelect = document.getElementById('vodCategory');
-        const itemSelect = document.getElementById('vodItem');
-        catSelect.addEventListener('change', function(){
-            const cat = this.value;
-            itemSelect.innerHTML = '<option value="">--- İçerik seçin ---</option>';
-            let list = [];
-            if (cat === '') for (let k in vodData) list = list.concat(vodData[k]);
-            else list = vodData[cat] || [];
-            list.sort((a,b)=>a.title.localeCompare(b.title));
-            list.slice(0, 500).forEach(item => {
-                const opt = document.createElement('option');
-                opt.value = item.url;
-                opt.textContent = item.title;
-                itemSelect.appendChild(opt);
+
+        // Kategori chips
+        categoryChipsDiv.innerHTML = '';
+        sortedGroups.forEach(cat => {
+            const chip = document.createElement('button');
+            chip.className = 'chip';
+            chip.textContent = `${cat} (${vodData[cat].length})`;
+            chip.addEventListener('click', () => {
+                document.getElementById('vodCategory').value = cat;
+                document.getElementById('vodCategory').dispatchEvent(new Event('change'));
+                updateChips(cat);
             });
-            if (itemSelect.options.length > 1) {
-                itemSelect.value = itemSelect.options[1].value;
-                playStream(itemSelect.options[1].value);
-            }
+            categoryChipsDiv.appendChild(chip);
         });
+
+        const searchInput = document.getElementById('vodSearch');
+        const catSelect = document.getElementById('vodCategory');
+
+        function updateChips(selected) {
+            document.querySelectorAll('.chip').forEach(chip => {
+                chip.classList.remove('active');
+                if (chip.textContent.startsWith(selected)) chip.classList.add('active');
+            });
+        }
+
+        function filterAndRender() {
+            const searchText = searchInput.value.toLowerCase();
+            const selectedCat = catSelect.value;
+            let filtered = [];
+
+            if (selectedCat === '') {
+                for (let cat in vodData) filtered = filtered.concat(vodData[cat]);
+            } else {
+                filtered = vodData[selectedCat] || [];
+            }
+
+            if (searchText) {
+                filtered = filtered.filter(item => item.title.toLowerCase().includes(searchText));
+            }
+
+            filtered.sort((a,b)=>a.title.localeCompare(b.title));
+            filtered = filtered.slice(0, 500);
+
+            const itemSelect = document.getElementById('vodItem');
+            if (itemSelect) {
+                itemSelect.innerHTML = `<option value="">--- ${filtered.length} içerik found ---</option>`;
+                filtered.forEach(item => {
+                    const opt = document.createElement('option');
+                    opt.value = item.url;
+                    opt.textContent = item.title;
+                    itemSelect.appendChild(opt);
+                });
+                if (itemSelect.options.length > 1) {
+                    itemSelect.value = itemSelect.options[1].value;
+                    playStream(itemSelect.options[1].value);
+                }
+            }
+        }
+
+        selectRow.innerHTML += `
+            <label for="vodItem">🎞️ İçerik:</label>
+            <select id="vodItem"><option value="">--- Seçim yapın ---</option></select>
+        `;
+
+        const itemSelect = document.getElementById('vodItem');
+        catSelect.addEventListener('change', () => {
+            updateChips(catSelect.value);
+            filterAndRender();
+        });
+        searchInput.addEventListener('input', filterAndRender);
         itemSelect.addEventListener('change', function(){ if(this.value) playStream(this.value); });
+
         if (sortedGroups.length > 0) {
             catSelect.value = sortedGroups[0];
             catSelect.dispatchEvent(new Event('change'));
         }
     }
 
-    // Canlı TV (değişmedi)
     async function loadLive() {
         if (liveLoaded) return;
         statusEl.innerText = '📡 Canlı TV listesi alınıyor...';
         selectRow.innerHTML = '<span style="color:#aaa;">⏳ Kanallar yükleniyor...</span>';
         try {
-            const resp = await fetch(LIVE_URL);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 10000);
+            
+            const resp = await fetch(LIVE_URL, { signal: controller.signal });
+            clearTimeout(timeoutId);
+            
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const text = await resp.text();
             const lines = text.split('\n');
@@ -243,18 +340,36 @@
 
     function renderLiveControls() {
         selectRow.innerHTML = `
+            <label for="liveSearch">🔍 Ara:</label>
+            <input type="text" id="liveSearch" placeholder="Kanal adı girin...">
             <label for="liveChannel">📡 Kanal:</label>
-            <select id="liveChannel">
-                <option value="">--- Kanal seçin ---</option>
-                ${liveData.map(ch => `<option value="${ch.url}">${ch.title}</option>`).join('')}
-            </select>
+            <select id="liveChannel"><option value="">--- Kanal seçin ---</option></select>
         `;
+        categoryChipsDiv.innerHTML = '';
+
+        const searchInput = document.getElementById('liveSearch');
         const chSelect = document.getElementById('liveChannel');
-        chSelect.addEventListener('change', function(){ if(this.value) playStream(this.value); });
-        if (liveData.length > 0) {
-            chSelect.value = liveData[0].url;
-            playStream(liveData[0].url);
+
+        function filterChannels() {
+            const searchText = searchInput.value.toLowerCase();
+            const filtered = liveData.filter(ch => ch.title.toLowerCase().includes(searchText));
+            
+            chSelect.innerHTML = `<option value="">--- ${filtered.length} kanal ---</option>`;
+            filtered.forEach(ch => {
+                const opt = document.createElement('option');
+                opt.value = ch.url;
+                opt.textContent = ch.title;
+                chSelect.appendChild(opt);
+            });
+            if (chSelect.options.length > 1) {
+                chSelect.value = chSelect.options[1].value;
+                playStream(chSelect.options[1].value);
+            }
         }
+
+        searchInput.addEventListener('input', filterChannels);
+        chSelect.addEventListener('change', function(){ if(this.value) playStream(this.value); });
+        filterChannels();
     }
 
     function switchTab(mode) {
@@ -266,6 +381,7 @@
         video.removeAttribute('src');
         video.load();
         loadingEl.style.display = 'none';
+        progressBar.style.width = '0%';
         if (mode === 'vod') {
             if (vodLoaded) renderVODControls();
             else loadVOD();
@@ -279,7 +395,7 @@
     tabLIVE.addEventListener('click', ()=> switchTab('live'));
     video.addEventListener('error', ()=> {
         loadingEl.style.display = 'none';
-        statusEl.innerText = '⚠️ Oynatılamadı';
+        statusEl.innerText = '⚠️ Bu kanal oynatılamadı - başka birini deneyin';
     });
     window.addEventListener('load', ()=> switchTab('vod'));
 })();
