@@ -1,190 +1,252 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-<meta charset="UTF-8">
-<title>Hayatta Kal</title>
-<style>
-body{background:#0f0f0f;color:#eee;font-family:Arial;text-align:center;margin:0}
-button{padding:8px 18px;margin:6px;cursor:pointer}
-.panel{border:1px solid #444;padding:14px;margin:12px auto;max-width:760px;text-align:left}
-.story{font-style:italic;color:#ccc;min-height:90px}
-.choice button{display:block;margin:6px 0}
-#game,#end,#how{display:none}
-h1,h2{font-weight:normal}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📺 Türk IPTV - VOD & Canlı TV</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0a0a; font-family: 'Segoe UI', Arial, sans-serif; display: flex; flex-direction: column; height: 100vh; color: #fff; }
+        #controls { background: #1a1a1a; padding: 10px 14px; border-bottom: 1px solid #333; flex-shrink: 0; display: flex; flex-direction: column; gap: 10px; }
+        #tabs { display: flex; gap: 6px; }
+        .tab-btn { flex: 1; padding: 10px 16px; background: #2a2a2a; border: 1px solid #444; color: #aaa; font-size: 15px; font-weight: 600; border-radius: 8px 8px 0 0; cursor: pointer; transition: all 0.2s; text-align: center; }
+        .tab-btn.active { background: #1a1a1a; color: #fff; border-bottom: 2px solid #e50914; }
+        #selectRow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        #selectRow select { background: #222; color: #fff; border: 1px solid #444; padding: 8px 12px; border-radius: 6px; font-size: 14px; flex: 1; min-width: 130px; }
+        #selectRow label { color: #aaa; font-weight: 600; font-size: 13px; }
+        #status { color: #aaa; font-size: 12px; }
+        #video-container { flex: 1; position: relative; background: #000; }
+        video { width: 100%; height: 100%; position: absolute; top: 0; left: 0; object-fit: contain; }
+        .loading { color: #fff; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); padding: 12px 24px; border-radius: 10px; }
+    </style>
 </head>
 <body>
-
-<!-- GİRİŞ -->
-<div id="menu">
-  <h1>🕯 HAYATTA KAL</h1>
-  <p>Soğuk. Sessizlik. Ve neden burada olduğunu bilmiyorsun.</p>
-  <button onclick="ekran('how')">Nasıl Oynanır</button>
-  <button onclick="baslat()">Oyuna Başla</button>
+<div id="controls">
+    <div id="tabs">
+        <button id="tabVOD" class="tab-btn active">🎬 Film & Dizi (VOD)</button>
+        <button id="tabLIVE" class="tab-btn">📺 Canlı TV</button>
+    </div>
+    <div id="selectRow"></div>
+    <div id="status">🔄 Başlatılıyor...</div>
 </div>
-
-<!-- NASIL OYNANIR -->
-<div id="how" class="panel">
-  <h2>Nasıl Oynanır?</h2>
-  <p>
-  Bu bir karar oyunudur.<br><br>
-  • Her gün farklı eylemler seçersin<br>
-  • Her seçimin kısa ve uzun vadeli sonuçları vardır<br>
-  • Hikâye, oynayış tarzına göre değişir<br><br>
-  Yanlış karar yoktur. Bedeli olan kararlar vardır.
-  </p>
-  <button onclick="ekran('menu')">Geri</button>
+<div id="video-container">
+    <video id="video" controls playsinline></video>
+    <div id="loadingIndicator" class="loading" style="display:none;">⏳ Akış bağlanıyor...</div>
 </div>
-
-<!-- OYUN -->
-<div id="game">
-  <div class="panel" id="stats"></div>
-  <div class="panel story" id="story"></div>
-  <div class="panel" id="status"></div>
-  <div class="panel" id="log"></div>
-  <div class="panel choice" id="choices"></div>
-
-  <div class="panel">
-    <button onclick="kesif()">Keşif</button>
-    <button onclick="dinlen()">Dinlen</button>
-    <button onclick="gozlem()">👁 Gözlem</button>
-    <button onclick="antrenman()">🧠 Antrenman</button>
-    <button onclick="gunuBitir()">Günü Bitir</button>
-    <button onclick="hikayeIlerle()">İlerle ▶</button>
-  </div>
-</div>
-
-<!-- SON -->
-<div id="end">
-  <h2 id="endTitle"></h2>
-  <div class="panel" id="summary"></div>
-  <button onclick="location.reload()">Yeniden Başla</button>
-</div>
-
 <script>
-// =====================
-// EKRAN GEÇİŞ
-// =====================
-function ekran(id){
-  menu.style.display="none";
-  how.style.display="none";
-  game.style.display="none";
-  end.style.display="none";
-  document.getElementById(id).style.display="block";
-}
+(function() {
+    // ✅ Güncel ve çalışan bağlantılar
+    const VOD_URL = 'https://raw.githubusercontent.com/emrullahozkilic/iptv/main/tr_vod.m3u'; // Film & Dizi listesi
+    const LIVE_URL = 'https://raw.githubusercontent.com/iptv-turk-tr/iptv/main/list.m3u';   // Canlı TV listesi
 
-// =====================
-// OYUN DEĞİŞKENLERİ
-// =====================
-let gun,can,enerji,odak;
-let kesifSay=0,dinlenSay=0,toplamHasar=0;
-let bilgi=0,hazirlik=0;
-let kaliciTehdit=false;
+    const video = document.getElementById('video');
+    const selectRow = document.getElementById('selectRow');
+    const statusEl = document.getElementById('status');
+    const loadingEl = document.getElementById('loadingIndicator');
+    const tabVOD = document.getElementById('tabVOD');
+    const tabLIVE = document.getElementById('tabLIVE');
 
-let aktifHikaye=[],hikayeIndex=0;
+    let hls = null;
+    let currentMode = 'vod';
+    let vodData = {};
+    let liveData = [];
+    let vodLoaded = false;
+    let liveLoaded = false;
 
-// =====================
-function baslat(){
-  ekran("game");
-  gun=1;can=100;enerji=100;odak=5;
-  hikayeHazirla(); guncelle();
-}
+    function playStream(url) {
+        if (!url) return;
+        loadingEl.style.display = 'block';
+        statusEl.innerText = '⏳ Bağlanıyor...';
+        if (hls) { hls.destroy(); hls = null; }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = url;
+            video.play().catch(()=>{});
+            video.onloadeddata = () => {
+                loadingEl.style.display = 'none';
+                statusEl.innerText = '▶️ Oynatılıyor (Native)';
+            };
+        } else if (Hls.isSupported()) {
+            hls = new Hls();
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().catch(()=>{});
+                loadingEl.style.display = 'none';
+                statusEl.innerText = '▶️ Oynatılıyor (hls.js)';
+            });
+            hls.on(Hls.Events.ERROR, (event, data) => {
+                if (data.fatal) {
+                    loadingEl.style.display = 'none';
+                    statusEl.innerText = '❌ Akış hatası';
+                }
+            });
+        } else {
+            loadingEl.style.display = 'none';
+            statusEl.innerText = '❌ HLS desteklenmiyor';
+        }
+    }
 
-// =====================
-function guncelle(){
-  stats.innerHTML=`<b>Gün:</b> ${gun} | ❤️ ${can} ⚡ ${enerji} 🎯 ${odak}`;
-  let d=[];
-  if(can<40)d.push("Yaralı");
-  if(enerji<30)d.push("Tükenmiş");
-  status.innerHTML="<b>Durum:</b> "+(d.length?d.join(", "):"Normal");
-}
+    async function loadVOD() {
+        if (vodLoaded) return;
+        statusEl.innerText = '📡 VOD listesi alınıyor...';
+        selectRow.innerHTML = '<span style="color:#aaa;">⏳ Film/Dizi listesi yükleniyor, lütfen bekleyin...</span>';
+        try {
+            const resp = await fetch(VOD_URL);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status} - Liste bulunamadı`);
+            const text = await resp.text();
+            const lines = text.split('\n');
+            let currentItem = null;
+            const items = {};
+            let total = 0;
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const groupMatch = line.match(/group-title="([^"]*)"/);
+                    const titleMatch = line.match(/,([^,]+)$/);
+                    const logoMatch = line.match(/tvg-logo="([^"]*)"/);
+                    const title = titleMatch ? titleMatch[1].trim() : 'Bilinmeyen';
+                    const group = groupMatch ? groupMatch[1].trim() : 'Diğer';
+                    const logo = logoMatch ? logoMatch[1].trim() : '';
+                    currentItem = { title, group, logo, url: '' };
+                } else if (line && !line.startsWith('#') && currentItem) {
+                    if (line.startsWith('http://') || line.startsWith('https://')) {
+                        currentItem.url = line;
+                        if (!items[currentItem.group]) items[currentItem.group] = [];
+                        items[currentItem.group].push({ title: currentItem.title, url: currentItem.url, logo: currentItem.logo });
+                        total++;
+                        currentItem = null;
+                    } else currentItem = null;
+                }
+            }
+            if (Object.keys(items).length === 0) throw new Error('Liste boş veya tanınmadı');
+            vodData = items;
+            vodLoaded = true;
+            statusEl.innerText = `✅ ${total} film/dizi içeriği yüklendi`;
+            if (currentMode === 'vod') renderVODControls();
+        } catch (err) {
+            statusEl.innerText = '❌ VOD yüklenemedi: ' + err.message;
+            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Film/Dizi listesi alınamadı. Lütfen sayfayı yenileyin veya farklı bir VOD linki deneyin.</span>';
+        }
+    }
 
-// =====================
-function hikayeHazirla(){
-  aktifHikaye=[];
-  if(bilgi>2) aktifHikaye.push("Çevredeki detayları daha erken fark ediyorsun.");
-  if(hazirlik>2) aktifHikaye.push("Vücudun zorluklara daha hazır.");
-  if(kaliciTehdit) aktifHikaye.push("Bir şey seni izliyor.");
-  hikayeIndex=0;
-  story.innerHTML=aktifHikaye[0]||"";
-}
+    function renderVODControls() {
+        const sortedGroups = Object.keys(vodData).sort((a,b)=>a.localeCompare(b));
+        selectRow.innerHTML = `
+            <label for="vodCategory">🗂️ Kategori:</label>
+            <select id="vodCategory">
+                <option value="">Tüm Kategoriler</option>
+                ${sortedGroups.map(g => `<option value="${g}">${g} (${vodData[g].length})</option>`).join('')}
+            </select>
+            <label for="vodItem">🎞️ İçerik:</label>
+            <select id="vodItem"><option value="">--- Kategori seçin ---</option></select>
+        `;
+        const catSelect = document.getElementById('vodCategory');
+        const itemSelect = document.getElementById('vodItem');
+        catSelect.addEventListener('change', function(){
+            const cat = this.value;
+            itemSelect.innerHTML = '<option value="">--- İçerik seçin ---</option>';
+            let list = [];
+            if (cat === '') for (let k in vodData) list = list.concat(vodData[k]);
+            else list = vodData[cat] || [];
+            list.sort((a,b)=>a.title.localeCompare(b.title));
+            list.slice(0, 500).forEach(item => {
+                const opt = document.createElement('option');
+                opt.value = item.url;
+                opt.textContent = item.title;
+                itemSelect.appendChild(opt);
+            });
+            if (itemSelect.options.length > 1) {
+                itemSelect.value = itemSelect.options[1].value;
+                playStream(itemSelect.options[1].value);
+            }
+        });
+        itemSelect.addEventListener('change', function(){ if(this.value) playStream(this.value); });
+        if (sortedGroups.length > 0) {
+            catSelect.value = sortedGroups[0];
+            catSelect.dispatchEvent(new Event('change'));
+        }
+    }
 
-// =====================
-function hikayeIlerle(){
-  if(hikayeIndex<aktifHikaye.length-1){
-    hikayeIndex++;
-    story.innerHTML=aktifHikaye[hikayeIndex];
-  }
-}
+    async function loadLive() {
+        if (liveLoaded) return;
+        statusEl.innerText = '📡 Canlı TV listesi alınıyor...';
+        selectRow.innerHTML = '<span style="color:#aaa;">⏳ Kanallar yükleniyor...</span>';
+        try {
+            const resp = await fetch(LIVE_URL);
+            if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+            const text = await resp.text();
+            const lines = text.split('\n');
+            const channels = [];
+            let title = '';
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const match = line.match(/,([^,]+)$/);
+                    if (match) title = match[1].trim();
+                } else if (line && !line.startsWith('#') && title) {
+                    if (line.startsWith('http://') || line.startsWith('https://')) {
+                        channels.push({ title, url: line });
+                    }
+                    title = '';
+                }
+            }
+            channels.sort((a,b)=>a.title.localeCompare(b.title));
+            liveData = channels.slice(0, 300);
+            liveLoaded = true;
+            statusEl.innerText = `✅ ${liveData.length} canlı kanal yüklendi`;
+            if (currentMode === 'live') renderLiveControls();
+        } catch (err) {
+            statusEl.innerText = '❌ Canlı TV yüklenemedi: ' + err.message;
+            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Canlı TV listesi alınamadı.</span>';
+        }
+    }
 
-// =====================
-// EYLEMLER
-// =====================
-function kesif(){
-  if(odak<=0){log.innerHTML="Odak yok.";return;}
-  odak--; enerji-=10; kesifSay++;
-  Math.random()<(0.6-bilgi*0.1)?hayvanOlay():log.innerHTML="Sessiz bir keşif.";
-  kontrol(); guncelle();
-}
+    function renderLiveControls() {
+        selectRow.innerHTML = `
+            <label for="liveChannel">📡 Kanal:</label>
+            <select id="liveChannel">
+                <option value="">--- Kanal seçin ---</option>
+                ${liveData.map(ch => `<option value="${ch.url}">${ch.title}</option>`).join('')}
+            </select>
+        `;
+        const chSelect = document.getElementById('liveChannel');
+        chSelect.addEventListener('change', function(){ if(this.value) playStream(this.value); });
+        if (liveData.length > 0) {
+            chSelect.value = liveData[0].url;
+            playStream(liveData[0].url);
+        }
+    }
 
-function dinlen(){
-  enerji+=20; can+=6; dinlenSay++;
-  log.innerHTML="Dinlendin.";
-  kontrol(); guncelle();
-}
+    function switchTab(mode) {
+        currentMode = mode;
+        tabVOD.classList.toggle('active', mode==='vod');
+        tabLIVE.classList.toggle('active', mode==='live');
+        if (hls) { hls.destroy(); hls = null; }
+        video.pause();
+        video.removeAttribute('src');
+        video.load();
+        loadingEl.style.display = 'none';
+        if (mode === 'vod') {
+            if (vodLoaded) renderVODControls();
+            else loadVOD();
+        } else {
+            if (liveLoaded) renderLiveControls();
+            else loadLive();
+        }
+    }
 
-function gozlem(){
-  if(odak<=0){log.innerHTML="Odak yok.";return;}
-  odak--; bilgi++;
-  log.innerHTML="Çevreyi dikkatle gözlemledin.";
-  aktifHikaye.push("Bazı şeyleri önceden fark ettin.");
-  guncelle();
-}
-
-function antrenman(){
-  enerji-=10; odak++; hazirlik++;
-  log.innerHTML="Kendini zorladın.";
-  aktifHikaye.push("Daha hazırlıklısın.");
-  kontrol(); guncelle();
-}
-
-// =====================
-function hayvanOlay(){
-  choices.innerHTML=`
-  <b>Bir hayvan saldırıyor</b>
-  <button onclick="hayvanSec()">Savun</button>`;
-}
-
-function hayvanSec(){
-  choices.innerHTML="";
-  let hasar=Math.max(0,15-hazirlik*2);
-  can-=hasar; toplamHasar+=hasar;
-  if(hasar>0) kaliciTehdit=true;
-  log.innerHTML="Karşılaşma sona erdi.";
-  kontrol(); guncelle();
-}
-
-// =====================
-function gunuBitir(){
-  enerji-=8;
-  if(kaliciTehdit){can--;toplamHasar++;}
-  gun++; hikayeHazirla();
-  kontrol(); guncelle();
-}
-
-// =====================
-function kontrol(){
-  if(can<=0) bitir("Avlandın","Bu yer seni kabul etmedi.");
-  if(enerji<=0) bitir("Tükeniş","Ayağa kalkacak gücün kalmadı.");
-  if(gun>=25) bitir("Hayatta Kalan","Bu yer seni değiştirdi.");
-}
-
-// =====================
-function bitir(b,m){
-  ekran("end");
-  endTitle.innerText=b;
-  summary.innerHTML=m;
-}
+    tabVOD.addEventListener('click', ()=> switchTab('vod'));
+    tabLIVE.addEventListener('click', ()=> switchTab('live'));
+    video.addEventListener('error', ()=> {
+        loadingEl.style.display = 'none';
+        statusEl.innerText = '⚠️ Oynatılamadı';
+    });
+    window.addEventListener('load', ()=> switchTab('vod'));
+})();
 </script>
 </body>
 </html>
