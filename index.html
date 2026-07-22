@@ -26,6 +26,7 @@
         .chip { padding: 6px 12px; background: #2a2a2a; border: 1px solid #444; color: #aaa; border-radius: 20px; cursor: pointer; font-size: 12px; transition: all 0.2s; }
         .chip.active { background: #e50914; color: #fff; border-color: #e50914; }
         .chip:hover { border-color: #e50914; }
+        .fallback-notice { background: #ffaa00; color: #000; padding: 6px 12px; border-radius: 6px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
@@ -46,16 +47,16 @@
 
 <script>
 (function() {
-    // 🎯 Geliştirilmiş VOD kaynakları (birden fazla yedek)
+    // 📌 Güncellenmiş VOD kaynakları (daha kararlı ve yedekli)
     const VOD_URLS = [
         'https://raw.githubusercontent.com/emrullahozkilic/iptv/main/tr_vod.m3u',
-        'https://pastebin.com/raw/hW3VrXSN',
         'https://raw.githubusercontent.com/jromero88/iptv/master/VOD.m3u',
         'https://itasli.github.io/TURKTV/vod.m3u',
         'https://raw.githubusercontent.com/rideordie16/tv/main/tv2.m3u',
         'https://raw.githubusercontent.com/iptv-org/iptv/master/streams/tr.m3u',
         'https://iptvcat.com/iptv/tr.m3u',
-        'https://streams.uzunmuhalefet.com/lists/tr.m3u'
+        'https://streams.uzunmuhalefet.com/lists/tr.m3u',
+        'https://pastebin.com/raw/hW3VrXSN'  // yedek
     ];
 
     const LIVE_URL = 'https://raw.githubusercontent.com/iptv-turk-tr/iptv/main/list.m3u';
@@ -120,7 +121,6 @@
         }
     }
 
-    // Geliştirilmiş M3U parse fonksiyonu
     function parseVOD(text) {
         const lines = text.split('\n');
         const items = {};
@@ -152,7 +152,6 @@
         return items;
     }
 
-    // VOD yükleme: hata yönetimi iyileştirildi
     async function loadVOD() {
         if (vodLoaded) return;
         statusEl.innerText = '📡 VOD listesi aranıyor...';
@@ -167,19 +166,15 @@
             
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 saniye timeout
-                
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
                 const resp = await fetch(url, { signal: controller.signal });
                 clearTimeout(timeoutId);
-                
                 if (!resp.ok) {
                     console.warn(`${url} - HTTP ${resp.status}`);
                     continue;
                 }
-                
                 const text = await resp.text();
-                if (text.length < 100) continue; // Boş yanıt kontrolü
-                
+                if (text.length < 100) continue;
                 const items = parseVOD(text);
                 if (Object.keys(items).length === 0) continue;
                 
@@ -189,7 +184,6 @@
                 for (let cat in items) {
                     allVodItems = allVodItems.concat(items[cat]);
                 }
-                
                 const total = allVodItems.length;
                 statusEl.innerText = `✅ VOD başarılı (${total} içerik)`;
                 updateProgress(VOD_URLS.length, VOD_URLS.length);
@@ -201,8 +195,12 @@
         }
 
         if (!success) {
-            statusEl.innerText = '❌ Tüm VOD kaynakları başarısız!';
-            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ VOD kaynakları şu anda erişilemez. Lütfen daha sonra deneyin.</span>';
+            statusEl.innerText = '❌ Tüm VOD kaynakları başarısız! 3 saniye sonra Canlı TV\'ye geçiliyor...';
+            selectRow.innerHTML = `<div class="fallback-notice">⚠️ VOD şu anda kullanılamıyor. Canlı TV'ye yönlendiriliyorsunuz...</div>`;
+            // Otomatik geçiş
+            setTimeout(() => {
+                switchTab('live');
+            }, 3000);
             return;
         }
 
@@ -222,7 +220,6 @@
             </select>
         `;
 
-        // Kategori chips
         categoryChipsDiv.innerHTML = '';
         sortedGroups.forEach(cat => {
             const chip = document.createElement('button');
@@ -306,10 +303,8 @@
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 10000);
-            
             const resp = await fetch(LIVE_URL, { signal: controller.signal });
             clearTimeout(timeoutId);
-            
             if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
             const text = await resp.text();
             const lines = text.split('\n');
@@ -334,7 +329,7 @@
             if (currentMode === 'live') renderLiveControls();
         } catch (err) {
             statusEl.innerText = '❌ Canlı TV yüklenemedi: ' + err.message;
-            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Canlı TV listesi alınamadı.</span>';
+            selectRow.innerHTML = '<span style="color:#ff5555;">⚠️ Canlı TV listesi alınamadı. Lütfen sayfayı yenileyin.</span>';
         }
     }
 
@@ -391,12 +386,16 @@
         }
     }
 
+    // Hata yakalama: video oynatılamazsa kullanıcıya bilgi ver
+    video.addEventListener('error', (e) => {
+        loadingEl.style.display = 'none';
+        statusEl.innerText = '⚠️ Bu içerik oynatılamadı - başka birini deneyin';
+        console.warn('Video error:', e);
+    });
+
     tabVOD.addEventListener('click', ()=> switchTab('vod'));
     tabLIVE.addEventListener('click', ()=> switchTab('live'));
-    video.addEventListener('error', ()=> {
-        loadingEl.style.display = 'none';
-        statusEl.innerText = '⚠️ Bu kanal oynatılamadı - başka birini deneyin';
-    });
+
     window.addEventListener('load', ()=> switchTab('vod'));
 })();
 </script>
